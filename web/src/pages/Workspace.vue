@@ -3,8 +3,7 @@ import { onMounted, ref, watch, onBeforeUnmount, nextTick, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 // 导入TUI Editor
-import { Editor } from '@toast-ui/vue-editor'
-import '@toast-ui/editor/dist/toastui-editor.css'
+import { VueEditor } from "vue3-editor";
 
 const route = useRoute()
 const router = useRouter()
@@ -13,6 +12,8 @@ const isPreviewMode = ref(route.query.preview === 'true')
 const pdfData = ref(null)
 const pages = ref([])
 const selectedPage = ref(1)
+const selectedPageInfo = ref({ocr_text: ""})
+const mdContent = ref(``)
 const isMobile = ref(window.innerWidth < 768) // 是否为移动设备
 const previewContainer = ref(null)
 const gridEl = ref(null)
@@ -35,13 +36,7 @@ const translateY = ref(0)
 const scale = ref(1)
 
 const mdInput = ref(null)
-const mdContent = ref(`# OCR 结果示例
 
-- 支持 **加粗**、_斜体_、代码块、列表、标题等
-
-\`\`\`text
-example代码或文本
-\`\`\``)
 const editorRef = ref(null)
 
 // 响应式处理
@@ -80,7 +75,8 @@ async function loadPdfData() {
       pages.value = data.pages.map(page => ({
         index: page.page_number,
         image_url: `http://127.0.0.1:8000/api/pdf/${fileId.value}/image/${page.page_number}`,
-        thumb_url: page.thumb_url || page.image_url, // 如果没有缩略图URL，使用普通图片URL
+        thumb_url: page.thumb_url || page.image_url,
+        ocr_text: page.ocr_text,
         width: page.width,
         height: page.height
       }))
@@ -91,6 +87,7 @@ async function loadPdfData() {
         index: i + 1,
         image_url: `http://127.0.0.1:8000/api/pdf/${fileId.value}/image/${i + 1}`,
         thumb_url: `http://127.0.0.1:8000/api/pdf/${fileId.value}/image/${i + 1}`,
+        ocr_text: "",
         width: null,
         height: null
       }))
@@ -99,7 +96,6 @@ async function loadPdfData() {
     // 显示第一页
     if (pages.value.length > 0) {
       await displayPage(selectedPage.value)
-      generateDefaultMarkdownContent()
     }
   } catch (err) {
     console.error('Error loading PDF data:', err)
@@ -107,21 +103,6 @@ async function loadPdfData() {
   } finally {
     loading.value = false
   }
-}
-
-// 生成默认的markdown内容
-function generateDefaultMarkdownContent() {
-  const defaultContent = `# PDF 文档分析
-
-## 文档信息
-- 文件名: ${pdfData.value?.original_filename || '未知'}
-- 总页数: ${pages.value.length}
-- 分析日期: ${new Date().toLocaleDateString()}
-
-## 页面内容摘要
-
-`
-  mdContent.value = defaultContent
 }
 
 // 为当前页面生成内容
@@ -139,7 +120,7 @@ function generatePageContent() {
       })
       if (response.ok) {
         const pageData = await response.json()
-        return pageData.text || ''
+        return pageData.recognized_text || ''
       }
     } catch (err) {
       console.error('Error fetching OCR result:', err)
@@ -147,27 +128,10 @@ function generatePageContent() {
     return ''
   }
 
-  // 检查是否已有该页面的内容，如果没有则添加
-  if (!mdContent.value.includes(`## 第 ${selectedPage.value} 页内容`)) {
-    // 先添加占位内容
-    mdContent.value += `
-## 第 ${selectedPage.value} 页内容
-
-<!-- 加载OCR结果中... -->
-
-`
-
-    // 异步获取OCR结果
-    fetchPageOcr().then(ocrText => {
-      if (ocrText) {
-        // 替换占位内容为实际OCR结果
-        mdContent.value = mdContent.value.replace(
-          `## 第 ${selectedPage.value} 页内容\n\n<!-- 加载OCR结果中... -->\n\n`,
-          `## 第 ${selectedPage.value} 页内容\n\n${ocrText}\n\n`
-        )
-      }
-    })
-  }
+  // 异步获取OCR结果
+  fetchPageOcr().then(ocrText => {
+    selectedPageInfo.value.ocr_text = ocrText
+  })
 }
 
 // 显示页面图片
@@ -180,10 +144,13 @@ async function displayPage(pageNumber) {
     return
   }
 
+  // 更新选中页面信息
+  selectedPageInfo.value = page
+
   // 重置位置和缩放
   translateX.value = 0
   translateY.value = 0
-  scale.value = 1
+  // scale.value = 1
   
   // 创建图片元素
   const img = document.createElement('img')
@@ -200,7 +167,12 @@ async function displayPage(pageNumber) {
   img.addEventListener('touchstart', startDrag)
   
   // 添加缩放事件
-  img.addEventListener('wheel', handleWheel)
+  img.addEventListener('wheel', (e) => {
+    if (e.ctrlKey) {
+      e.preventDefault()
+      handleWheel(e)
+    }
+  }, { passive: false })
   img.addEventListener('touchmove', handleTouchZoom, { passive: false })
   
   // 添加加载状态
@@ -440,8 +412,9 @@ onBeforeUnmount(() => {
 
 function select(p) {
   selectedPage.value = p
+  // console.log(selectedPage.value)
   // 切换页面时生成相应的页面内容
-  generatePageContent()
+  // generatePageContent()
   
   // 移动设备上选择页面后自动关闭侧边栏
   if (isMobile.value) {
@@ -453,7 +426,7 @@ watch(selectedPage, async (p) => {
   await displayPage(p)
   // 页面切换后延迟一点生成内容
   setTimeout(() => {
-    generatePageContent()
+    // generatePageContent()
   }, 300)
 })
 
@@ -592,8 +565,8 @@ const debouncedSave = debounce(saveContentToFile, 2000)
 
 // 当编辑器内容变化时自动保存
 function handleEditorChange({ markdown }) {
-  mdContent.value = markdown
   // 使用防抖函数避免频繁保存
+  mdContent.value = markdown
   debouncedSave()
 }
 </script>
@@ -677,9 +650,9 @@ function handleEditorChange({ markdown }) {
         </div>
       
         <!-- 右侧主工作区 -->
-        <div class="flex-1 flex flex-col">
+        <div class="column justify-between">
           <!-- 预览区 -->
-          <div class="border-b">
+          <div class="border-r-2 md-4 border-gray-200">
             <!-- 预览工具栏 -->
             <div class="p-3 bg-gray-50 border-b border-gray-200 flex items-center">
               <div class="flex space-x-1">
@@ -701,6 +674,9 @@ function handleEditorChange({ markdown }) {
                 <button class="tool-btn">
                   <span class="iconify mr-1" data-icon="mdi:fullscreen" data-width="18"></span> 全屏
                 </button>
+                <button class="tool-btn" @click="generatePageContent">
+                  <span class="iconify mr-1" data-icon="mdi:fullscreen" data-width="18"></span> OCR
+                </button>
               </div>
               <div class="ml-auto text-sm text-gray-700">第 4 页 (100%)</div>
             </div>
@@ -712,15 +688,19 @@ function handleEditorChange({ markdown }) {
             </div>
           </div>
           <!-- 编辑区 -->
-          <div class="editor-section">
+          <div class="editor-section md-5">
             <!-- 编辑内容区 -->
             <div class="flex-1 flex">
               <!-- 文本编辑区 -->
               <div class="editor-content flex-1">
-               
+                <!-- <div v-html="selectedPageInfo.ocr_text"></div> -->
+                <VueEditor
+                  v-model="selectedPageInfo.ocr_text"
+                  ref="editorRef"
+                />
               </div>
               <!-- 批注列表 -->
-              <div class="w-[280px] border-l border-gray-200">
+              <!-- <div class="w-[280px] border-l border-gray-200">
                 <div class="p-3 border-b border-gray-200">
                   <h3 class="font-medium text-gray-800">批注列表</h3>
                 </div>
@@ -746,7 +726,7 @@ function handleEditorChange({ markdown }) {
                     </div>
                   </div>
                 </div>
-              </div>
+              </div> -->
             </div>
             <!-- 保存状态 -->
             <div class="p-2 bg-gray-50 border-t border-gray-200 flex items-center px-4">
@@ -882,7 +862,6 @@ function handleEditorChange({ markdown }) {
   /* 缩略图卡片样式增强 */
   /* 预览区域样式 */
   .preview-section {
-    height: 60vh;
     overflow: hidden;
     position: relative;
   }
