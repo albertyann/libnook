@@ -512,14 +512,17 @@ async function saveContentToFile() {
   saveSuccess.value = false
   saveError.value = ''
 
+  console.log(selectedPageInfo.value)
+
   try {
-    const response = await fetch(`http://127.0.0.1:8000/api/pdf/${fileId.value}/content`, {
+    const response = await fetch(`http://127.0.0.1:8000/api/pdf/content/${fileId.value}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        content: mdContent.value
+        page_number: selectedPage.value,
+        content: selectedPageInfo.value.ocr_text,
       })
     })
 
@@ -671,14 +674,12 @@ function handleEditorChange({ markdown }) {
                 <button class="tool-btn">
                   <span class="iconify mr-1" data-icon="mdi:arrow-expand-vertical" data-width="18"></span> 适应高度
                 </button>
-                <button class="tool-btn">
-                  <span class="iconify mr-1" data-icon="mdi:fullscreen" data-width="18"></span> 全屏
-                </button>
+           
                 <button class="tool-btn" @click="generatePageContent">
                   <span class="iconify mr-1" data-icon="mdi:fullscreen" data-width="18"></span> OCR
                 </button>
               </div>
-              <div class="ml-auto text-sm text-gray-700">第 4 页 (100%)</div>
+              <div class="ml-auto text-sm text-gray-700">第 {{ selectedPage }} 页 (100%)</div>
             </div>
             <!-- 预览内容 -->
             <div class="preview-section bg-gray-50">

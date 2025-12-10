@@ -213,6 +213,48 @@ async def download_pdf(file_id: str, db: Session = Depends(get_db)):
         logger.error(f"下载PDF文件失败: {str(e)}")
         raise HTTPException(status_code=500, detail="下载文件失败")
 
+from pydantic import BaseModel
+class TextItem(BaseModel):
+    content: str
+    page_number: int
+
+@router.post("/content/{file_id}")
+async def save_text(file_id: str, item: TextItem, db: Session = Depends(get_db)):
+    """
+    - **file_id**: PDF文件ID
+    - **content**: OCR识别内容
+    """
+    try:
+        from app.database.models import PDFPage
+        from datetime import datetime
+
+        page = db.query(PDFPage).filter(
+            PDFPage.document_id == file_id,
+            PDFPage.page_number == item.page_number
+        ).first()
+        
+        # 检查文件是否存在
+        if not page:
+            raise HTTPException(status_code=404, detail=f"页码 {item.page_number} 不存在")
+        
+        page.ocr_text = item.content
+        page.ocr_status = True
+        page.updated_at = datetime.now()
+
+        db.commit()
+        
+        # 返回文件
+        return {
+            "file_id": file_id,
+            "status": "success",
+            "message": "保存成功"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"保存失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="保存失败")
+
 @router.delete("/{file_id}")
 async def delete_pdf(file_id: str, db: Session = Depends(get_db)):
     """
@@ -540,15 +582,13 @@ async def perform_ocr_on_page(file_id: str, page_number: int, db: Session = Depe
             if not recognized_text.strip():
                 logger.warning("OCR识别结果为空")
             
-            
-            
             try:
                 
                 if page:
                     # 更新已存在的页面记录
                     page.ocr_text = recognized_text
                     page.ocr_status = True
-                    page.processed_at = datetime.utcnow()
+                    page.processed_at = datetime.now()
                     logger.info(f"准备更新页面 {page_number} 的OCR结果")
                 else:
                     # 创建新的页面记录
@@ -557,7 +597,7 @@ async def perform_ocr_on_page(file_id: str, page_number: int, db: Session = Depe
                         page_number=page_number,
                         ocr_text=recognized_text,
                         ocr_status=True,
-                        processed_at=datetime.utcnow()
+                        processed_at=datetime.now()
                     )
                     db.add(new_page)
                     logger.info(f"准备创建页面 {page_number} 的OCR记录")
