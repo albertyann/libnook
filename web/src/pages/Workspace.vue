@@ -697,6 +697,7 @@ function handleEditorChange({ markdown }) {
                 <!-- <div v-html="selectedPageInfo.ocr_text"></div> -->
                 <VueEditor
                   v-model="selectedPageInfo.ocr_text"
+                  :editorToolbar="[]"
                   ref="editorRef"
                 />
               </div>
