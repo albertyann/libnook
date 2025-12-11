@@ -434,8 +434,147 @@ def process_pdf_background(file_id: str, file_path: str):
     finally:
         db.close()
 
-@router.post("/{file_id}/ocr/{page_number}")
+def ali_ocr(encoded_image: str):
+    client = OpenAI(
+        api_key = os.getenv("DASHSCOPE_API_KEY"),
+        base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
+    )
+
+    # 构建请求体
+    completion = client.chat.completions.create(
+        model="qwen3-vl-plus",
+        messages=[
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{encoded_image}"
+                        },
+                    },
+                    {"type": "text", "text": "ocr识别，直接返回识别内容"},
+                ],
+            },
+        ],
+        stream=False,
+        # enable_thinking 参数开启思考过程，thinking_budget 参数设置最大推理过程 Token 数
+        extra_body={
+            'enable_thinking': False,
+            "thinking_budget": 81920
+        },
+    )
+    
+    # 处理Ollama的流式响应（每行一个JSON对象）
+    recognized_text = ""
+    try:
+        # 分割响应文本为多行
+        # 逐行解析JSON
+        for choice in completion.choices:
+            logger.info(f"Ollama返回choice: {choice}")
+            if not choice.message:
+                print("\nUsage:")
+                print(choice.message)
+            else:
+                try:
+                    content = choice.message.content
+                    # 累加识别的文本
+                    recognized_text += content
+                except json.JSONDecodeError:
+                    logger.warning(f"无法解析JSON行: {line}")
+        
+        # 如果没有提取到文本，尝试直接解析整个响应（处理非流式情况）
+        if not recognized_text:
+            try:
+                logger.info(f"尝试整体解析，获取到文本: {recognized_text}")
+            except json.JSONDecodeError:
+                logger.error("整体解析JSON也失败了")
+                raise HTTPException(
+                    status_code=503,
+                    detail="OCR服务返回格式错误，无法解析响应"
+                )
+                
+    except Exception as e:
+        logger.error(f"处理Ollama响应时发生错误: {str(e)}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"处理OCR响应失败: {str(e)}"
+        )
+
+    return recognized_text
+
+
+def ollama_ocr(encoded_image: str):
+    '''
+    TODO: 实现ollama ocr
+    '''
+    from ollama import Client
+
+    client = Client(host='http://localhost:11434')
+
+    completion = client.generate(
+        #model = 'deepseek-ocr',
+        model = 'qwen3-vl:2b',
+        # model = 'gemma3',
+        prompt = '识别图片文字，输出markdown格式',
+        images = [f"{encoded_image}"],
+        stream = False,
+        think = False
+    )
+
+    return completion["response"]
+
+def easy_ocr(image: str):
+    '''
+    TODO: 实现ollama ocr
+    '''
+    import easyocr
+
+    reader = easyocr.Reader(['ch_sim','en'])
+    logger.info(f"easyocr识别图片: {image}")
+    result = reader.readtext(image, detail=0)
+
+    return "\n".join(result)
+
+
+@router.post("/{file_id}/noocr/{page_number}")
 async def perform_ocr_on_page(file_id: str, page_number: int, db: Session = Depends(get_db)):
+    """
+    标记为无需ocr
+    """
+    try:
+        # 从数据库中更新页面的OCR结果
+        from app.database.models import PDFPage
+
+        # 获取PDF文档信息
+        pdf_doc = get_pdf_document(db, file_id)
+        if not pdf_doc:
+            raise HTTPException(status_code=404, detail="文件不存在")
+
+        # 查询现有页面记录
+        page = db.query(PDFPage).filter(
+            PDFPage.document_id == file_id,
+            PDFPage.page_number == page_number
+        ).first()
+
+        page.ocr_status = True
+        # page.updated_at = datetime.now()
+
+        db.commit()
+        return {"message": f"执行成功"}
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"OCR识别失败: {str(e)}")
+        raise HTTPException(status_code=500, detail="OCR识别过程中发生错误")
+
+
+from pydantic import BaseModel
+class OcrItem(BaseModel):
+    again: bool = False
+
+@router.post("/{file_id}/ocr/{page_number}")
+async def perform_ocr_on_page(file_id: str, page_number: int, item: OcrItem, db: Session = Depends(get_db)):
     """
     对PDF指定页执行OCR识别
     
@@ -460,10 +599,10 @@ async def perform_ocr_on_page(file_id: str, page_number: int, db: Session = Depe
             PDFPage.page_number == page_number
         ).first()
 
-        logger.info(page.ocr_status)
+        logger.info(item)
 
         # 如果已经ocr，不需要再执行
-        if page.ocr_status == 1:
+        if page.ocr_status and not item.again:
             raise HTTPException(
                 status_code=400, 
                 detail=f"第{page_number}页已被处理"
@@ -507,76 +646,9 @@ async def perform_ocr_on_page(file_id: str, page_number: int, db: Session = Depe
             # 配置Ollama API URL
             #ollama_url = os.getenv("OLLAMA_URL", "http://192.168.18.53:11434/api/generate")
             # 初始化OpenAI客户端
-            client = OpenAI(
-                api_key = os.getenv("DASHSCOPE_API_KEY"),
-                base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
-            )
-
-            # 构建请求体
-            # payload = {
-            #     "model": "deepseek-ocr",
-            #     "prompt": "free ocr",
-            #     "images": [encoded_image]
-            # }
-            completion = client.chat.completions.create(
-                model="qwen3-vl-plus",
-                messages=[
-                    {
-                        "role": "user",
-                        "content": [
-                            {
-                                "type": "image_url",
-                                "image_url": {
-                                    "url": f"data:image/png;base64,{encoded_image}"
-                                },
-                            },
-                            {"type": "text", "text": "ocr识别，直接返回识别内容"},
-                        ],
-                    },
-                ],
-                stream=False,
-                # enable_thinking 参数开启思考过程，thinking_budget 参数设置最大推理过程 Token 数
-                extra_body={
-                    'enable_thinking': False,
-                    "thinking_budget": 81920
-                },
-            )
-            
-            # 处理Ollama的流式响应（每行一个JSON对象）
-            recognized_text = ""
-            try:
-                # 分割响应文本为多行
-                # 逐行解析JSON
-                for choice in completion.choices:
-                    logger.info(f"Ollama返回choice: {choice}")
-                    if not choice.message:
-                        print("\nUsage:")
-                        print(choice.message)
-                    else:
-                        try:
-                            content = choice.message.content
-                            # 累加识别的文本
-                            recognized_text += content
-                        except json.JSONDecodeError:
-                            logger.warning(f"无法解析JSON行: {line}")
-                
-                # 如果没有提取到文本，尝试直接解析整个响应（处理非流式情况）
-                if not recognized_text:
-                    try:
-                        logger.info(f"尝试整体解析，获取到文本: {recognized_text}")
-                    except json.JSONDecodeError:
-                        logger.error("整体解析JSON也失败了")
-                        raise HTTPException(
-                            status_code=503,
-                            detail="OCR服务返回格式错误，无法解析响应"
-                        )
-                        
-            except Exception as e:
-                logger.error(f"处理Ollama响应时发生错误: {str(e)}")
-                raise HTTPException(
-                    status_code=503,
-                    detail=f"处理OCR响应失败: {str(e)}"
-                )
+            # recognized_text = easy_ocr(image_path)
+            recognized_text = ali_ocr(encoded_image)
+            # recognized_text = ollama_ocr(encoded_image)
                 
             # 确保识别文本不为空
             if not recognized_text.strip():

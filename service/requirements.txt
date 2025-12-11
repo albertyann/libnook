@@ -10,3 +10,5 @@ python-dotenv
 sqlalchemy
 opencv-python
 openai
+ollama
+easyocr
