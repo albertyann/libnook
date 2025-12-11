@@ -397,6 +397,25 @@ function debounce(func, wait) {
   }
 }
 
+function replacePunctuation() {
+  console.log(selectedPageInfo)
+
+  if (!selectedPageInfo.value.ocr_text) return
+  
+  selectedPageInfo.value.ocr_text = selectedPageInfo.value.ocr_text
+    .replace(/,\s*/g, '，')
+    .replace(/\"/g, '”')
+    .replace(/~/g, '～')
+    .replace(/\(/g, '（')
+    .replace(/\)/g, '）')
+    .replace(/:\s*/g, '：')
+    .replace(/;\s*/g, '；')
+    .replace(/!\s*/g, '！')
+    .replace(/\s*“/g, '“')
+    .replace(/”\s*/g, '”')
+    .replace(/\./g, '。');
+}
+
 </script>
 
 <template>
@@ -489,7 +508,7 @@ function debounce(func, wait) {
           <!-- 右侧50% - 编辑区 -->
           <div class="w-1/2">
             <!-- 编辑内容区 -->
-            <div class="editor-content h-[765px] overflow-hidden">
+            <div class="editor-content h-[760px] overflow-hidden">
               <VueEditor
                 v-model="selectedPageInfo.ocr_text"
                 :editorToolbar="[]"
@@ -506,13 +525,21 @@ function debounce(func, wait) {
                 <span v-else-if="lastSaveTime" class="text-gray-500">自动保存于 {{ lastSaveTime }}</span>
                 <span v-else class="text-gray-500">未保存</span>
               </div>
-              <button 
-                class="ml-auto bg-blue-600 text-white px-4 py-1 rounded-lg text-sm"
-                :disabled="isSaving"
-                @click="saveContentToFile"
-              >
-                {{ isSaving ? '保存中...' : '保存修改' }}
-              </button>
+              <div class="ml-auto">
+                <button 
+                  class="bg-blue-600 text-white px-4 py-1 rounded-lg text-sm"
+                  @click="replacePunctuation"
+                >
+                  处理标点
+                </button>
+                <button 
+                  class="bg-blue-600 text-white px-4 py-1 m-1 rounded-lg text-sm"
+                  :disabled="isSaving"
+                  @click="saveContentToFile"
+                >
+                  {{ isSaving ? '保存中...' : '保存修改' }}
+                </button>
+              </div>
             </div>
           </div>
         </div>

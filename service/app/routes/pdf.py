@@ -38,7 +38,7 @@ async def upload_pdf(
     contents = await file.read()
     logger.info(f"文件大小: {len(contents)} 字节")
     if len(contents) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=413, detail=f"文件大小超过限制 ({MAX_FILE_SIZE/1048576}MB)")
+        raise HTTPException(status_code = 413, detail=f"文件大小超过限制 ({MAX_FILE_SIZE / 1048576}MB)")
     
     # 生成唯一文件名
     file_id = str(uuid.uuid4())
@@ -391,7 +391,7 @@ async def get_pdf_image(file_id: str, page_number: int, db: Session = Depends(ge
             )
         
         # 构建图片文件名和路径
-        image_filename = f"{file_id}_p_{page_number}.png"
+        image_filename = f"p_{page_number}.png"
         image_dir = os.path.join("images", file_id)
         image_path = os.path.join(image_dir, image_filename)
         
@@ -616,7 +616,7 @@ async def perform_ocr_on_page(file_id: str, page_number: int, item: OcrItem, db:
             )
         
         # 构建图片文件名和路径
-        image_filename = f"{file_id}_p_{page_number}.png"
+        image_filename = f"p_{page_number}.png"
         image_dir = os.path.join("images", file_id)
         image_path = os.path.join(image_dir, image_filename)
         

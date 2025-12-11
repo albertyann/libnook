@@ -61,7 +61,7 @@ def pdf_to_images(pdf_path: str, output_dir: str, dpi: int = 300) -> List[str]:
                 pix = page.get_pixmap(matrix=matrix)
                 
                 # 构造图片文件名
-                image_filename = f"{pdf_filename}_p_{page_number + 1}.png"
+                image_filename = f"p_{page_number + 1}.png"
                 image_path = os.path.join(output_dir, image_filename)
                 
                 # 保存图片
