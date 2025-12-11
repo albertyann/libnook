@@ -169,6 +169,8 @@ async function displayPage(pageNumber) {
   img.style.maxHeight = '100%'
   img.style.objectFit = 'contain'
   img.style.transition = 'transform 0.1s ease'
+  img.style.position = 'relative' // 确保图片定位正确
+  img.style.transformOrigin = 'center center' // 设置变换原点为中心
   
   // 添加加载状态
   previewContainer.value.innerHTML = '<div class="text-gray-500">加载中...</div>'
@@ -180,6 +182,35 @@ async function displayPage(pageNumber) {
     
     // 获取预览容器
     const container = previewContainer.value
+    
+    // 应用变换并限制拖动范围
+    const applyTransform = () => {
+      // 应用变换
+      img.style.transform = `scale(${scale.value}) translate(${translateX.value}px, ${translateY.value}px)`
+      
+      // 计算容器和图片的尺寸
+      const containerRect = container.getBoundingClientRect()
+      const imgRect = img.getBoundingClientRect()
+      
+      // 计算图片实际尺寸（考虑缩放）
+      const imgWidth = img.naturalWidth * scale.value
+      const imgHeight = img.naturalHeight * scale.value
+      
+      // 计算容器可用尺寸
+      const containerWidth = containerRect.width
+      const containerHeight = containerRect.height
+      
+      // 计算最大偏移量
+      const maxTranslateX = Math.max(0, (imgWidth - containerWidth) / 2)
+      const maxTranslateY = Math.max(0, (imgHeight - containerHeight) / 2)
+      
+      // 限制偏移量范围
+      translateX.value = Math.max(-maxTranslateX, Math.min(maxTranslateX, translateX.value))
+      translateY.value = Math.max(-maxTranslateY, Math.min(maxTranslateY, translateY.value))
+      
+      // 重新应用变换（带有限制后的偏移量）
+      img.style.transform = `scale(${scale.value}) translate(${translateX.value}px, ${translateY.value}px)`
+    }
     
     // 鼠标按下事件 - 开始拖动
     const handleMouseDown = (e) => {
@@ -201,8 +232,8 @@ async function displayPage(pageNumber) {
       translateX.value = startTranslateX.value + deltaX
       translateY.value = startTranslateY.value + deltaY
       
-      // 应用变换
-      img.style.transform = `scale(${scale.value}) translate(${translateX.value}px, ${translateY.value}px)`
+      // 应用变换并限制拖动范围
+      applyTransform()
     }
     
     // 鼠标释放事件 - 结束拖动
@@ -220,7 +251,7 @@ async function displayPage(pageNumber) {
         // 计算缩放比例
         const zoomSpeed = 0.1
         const delta = e.deltaY > 0 ? -zoomSpeed : zoomSpeed
-        const newScale = Math.max(0.1, Math.min(5, scale.value + delta))
+        const newScale = Math.max(0.8, Math.min(1.5, scale.value + delta))
         
         // 计算缩放中心
         const rect = container.getBoundingClientRect()
@@ -235,22 +266,24 @@ async function displayPage(pageNumber) {
         translateX.value += mouseX * (prevScale - newScale) / prevScale
         translateY.value += mouseY * (prevScale - newScale) / prevScale
         
-        // 应用变换
-        img.style.transform = `scale(${scale.value}) translate(${translateX.value}px, ${translateY.value}px)`
+        // 应用变换并限制拖动范围
+        applyTransform()
       }
       // 否则，允许默认滚动行为
     }
     
     // 放大按钮事件
     const handleZoomIn = () => {
-      scale.value = Math.min(5, scale.value + 0.1)
-      img.style.transform = `scale(${scale.value}) translate(${translateX.value}px, ${translateY.value}px)`
+      scale.value = Math.min(1.5, scale.value + 0.1)
+      // 应用变换并限制拖动范围
+      applyTransform()
     }
     
     // 缩小按钮事件
     const handleZoomOut = () => {
-      scale.value = Math.max(0.1, scale.value - 0.1)
-      img.style.transform = `scale(${scale.value}) translate(${translateX.value}px, ${translateY.value}px)`
+      scale.value = Math.max(0.8, scale.value - 0.1)
+      // 应用变换并限制拖动范围
+      applyTransform()
     }
     
     // 绑定事件
@@ -300,19 +333,6 @@ onBeforeUnmount(() => {
   const src = route.query.src
   if (src?.startsWith('blob:')) URL.revokeObjectURL(src)
 })
-
-async function onMdFileChange(e) {
-  const file = e.target.files?.[0]
-  if (!file) return
-
-  const reader = new FileReader()
-  reader.onload = async () => {
-    mdContent.value = String(reader.result || '')
-    // 编辑器内容更新后保存到服务器
-    await saveContentToFile()
-  }
-  reader.readAsText(file)
-}
 
 // 保存状态相关
 const lastSaveTime = ref('')
@@ -377,15 +397,6 @@ function debounce(func, wait) {
   }
 }
 
-// 创建防抖保存函数
-const debouncedSave = debounce(saveContentToFile, 2000)
-
-// 当编辑器内容变化时自动保存
-function handleEditorChange({ markdown }) {
-  // 使用防抖函数避免频繁保存
-  mdContent.value = markdown
-  debouncedSave()
-}
 </script>
 
 <template>
