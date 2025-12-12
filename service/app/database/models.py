@@ -19,6 +19,8 @@ class PDFDocument(Base):
     id = Column(String, primary_key=True, index=True)  # 使用UUID作为主键
     original_filename = Column(String, nullable=False)
     file_path = Column(String, nullable=False)
+    pdf_type = Column(String, nullable=True)
+    pdf_metadata = Column(String, nullable=True)
     total_pages = Column(Integer, default=0)
     status = Column(Enum(ProcessingStatus), default=ProcessingStatus.UPLOADED)
     error_message = Column(Text, nullable=True)

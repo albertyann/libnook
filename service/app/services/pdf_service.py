@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from app.database.models import PDFDocument, PDFPage, ProcessingStatus
-from app.utils.pdf_processor import parse_pdf_info
+from app.utils.pdf_processor import parse_pdf_info, extract_text_from_page
 from app.utils.image_converter import pdf_to_images
 from app.services.ocr_service import perform_ocr_on_image
 import os
@@ -37,6 +37,54 @@ def update_pdf_status(db: Session, file_id: str, status: ProcessingStatus, error
         logger.info(f"更新PDF状态: {file_id} -> {status}")
     return pdf_doc
 
+def classify_and_extract(pdf_path, threshold_per_page=20):
+    """
+    判断PDF类型并提取文本
+    :param pdf_path: PDF文件路径
+    :param threshold_per_page: 每页文本长度阈值，用于判断是否为图片型
+    :return: 字典，包含类型和提取的文本（如果是文本型）
+    """
+    result = {
+        "type": None,
+        "text": "",
+        "pages": []
+    }
+
+    try:
+        # 1. 打开文档
+        total_text_length = 0
+        page_texts = []
+
+        # 2. 遍历前20页
+        for page_num in range(0, 20):
+            # 提取纯文本，并去除首尾空白字符
+            text = extract_text_from_page(pdf_path, page_num)
+            logger.info(f"第 {page_num} 页文本长度: {text}")
+
+            if text:
+                # 统计该页文本长度
+                page_texts.append(text)
+                total_text_length += len(text)
+        
+        # 3. 计算平均值并判断类型
+        len_texts = 1 if len(page_texts) == 0 else len(page_texts)
+        avg_text_length = total_text_length / len_texts
+        
+        if avg_text_length < threshold_per_page:
+            result["type"] = "image-based" # 图片型
+            print(f"判定结果：图片型 PDF (平均每页文本长度: {avg_text_length:.2f})")
+        else:
+            result["type"] = "text-based" # 文本型
+            result["text"] = "\n--- 分页符 ---\n".join(page_texts)
+            result["pages"] = page_texts # 保存每页内容的列表
+            print(f"判定结果：文本型 PDF (平均每页文本长度: {avg_text_length:.2f})")
+            
+    except Exception as e:
+        print(f"处理出错: {e}")
+        result["type"] = "error"
+    
+    return result
+
 def process_pdf(db: Session, file_id: str, file_path: str) -> None:
     """
     处理PDF文件：解析并保存信息到数据库，然后生成图片
@@ -47,11 +95,15 @@ def process_pdf(db: Session, file_id: str, file_path: str) -> None:
         
         # 解析PDF信息
         pdf_info = parse_pdf_info(file_path)
-        
+        pdf_type = classify_and_extract(file_path)
+
         # 更新PDF文档信息
         pdf_doc = db.query(PDFDocument).filter(PDFDocument.id == file_id).first()
         if pdf_doc:
             pdf_doc.total_pages = pdf_info['total_pages']
+            pdf_doc.pdf_type = pdf_type['type']
+            pdf_doc.pdf_metadata = str(pdf_info['metadata'])
+
             logger.info(f"PDF文档 {file_id} 总页数: {pdf_info['total_pages']}")
             
             # 为每一页创建记录
