@@ -443,7 +443,7 @@ def ali_ocr(encoded_image: str):
     # 构建请求体
     completion = client.chat.completions.create(
         model="qwen3-vl-plus",
-        messages=[
+        messages = [
             {
                 "role": "user",
                 "content": [
@@ -523,6 +523,58 @@ def ollama_ocr(encoded_image: str):
     )
 
     return completion["response"]
+
+
+def lm_studio_ocr(encoded_image: str):
+    '''
+    lmstudio ocr
+    '''
+    from openai import OpenAI
+
+    client = OpenAI(base_url="http://localhost:8899/v1", api_key="lm-studio")
+
+    completion = client.chat.completions.create(
+        model="qwen/qwen3-vl-8b",
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{encoded_image}"
+                        },
+                    },
+                    {"type": "text", "text": "ocr识别，直接返回识别内容"},
+                ],
+            },
+        ]
+    )
+
+    recognized_text = ""
+    try:
+        # 分割响应文本为多行
+        # 逐行解析JSON
+        for choice in completion.choices:
+            logger.info(f"LmStudio 返回choice: {choice}")
+            if not choice.message:
+                print("\nUsage:")
+                print(choice.message)
+            else:
+                try:
+                    content = choice.message.content
+                    # 累加识别的文本
+                    recognized_text += content
+                except json.JSONDecodeError:
+                    logger.warning(f"无法解析JSON行: {line}")
+    except Exception as e:
+        logger.error(f"处理LmStudio响应时发生错误: {str(e)}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"处理LmStudio响应失败: {str(e)}"
+        )
+    
+    return recognized_text
 
 def easy_ocr(image: str):
     '''
@@ -647,8 +699,9 @@ async def perform_ocr_on_page(file_id: str, page_number: int, item: OcrItem, db:
             #ollama_url = os.getenv("OLLAMA_URL", "http://192.168.18.53:11434/api/generate")
             # 初始化OpenAI客户端
             # recognized_text = easy_ocr(image_path)
-            recognized_text = ali_ocr(encoded_image)
+            # recognized_text = ali_ocr(encoded_image)
             # recognized_text = ollama_ocr(encoded_image)
+            recognized_text = lm_studio_ocr(encoded_image)
                 
             # 确保识别文本不为空
             if not recognized_text.strip():
