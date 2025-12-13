@@ -5,6 +5,9 @@ import { useRoute, useRouter } from 'vue-router'
 // 导入TUI Editor
 import { VueEditor } from "vue3-editor";
 
+// 导入PreviewSection组件
+import PreviewSection from '../components/PreviewSection.vue';
+
 const route = useRoute()
 const fileId = ref(route.query.id || '')
 const pdfData = ref(null)
@@ -17,15 +20,8 @@ const loading = ref(false)
 const error = ref(null)
 const ocrAgain = ref(false) // 是否重新OCR
 
-// 图片缩放和拖动相关变量
-const scale = ref(1) // 缩放比例
-const translateX = ref(0) // 水平偏移量
-const translateY = ref(0) // 垂直偏移量
-const isDragging = ref(false) // 是否正在拖动
-const startX = ref(0) // 拖动开始时的鼠标X坐标
-const startY = ref(0) // 拖动开始时的鼠标Y坐标
-const startTranslateX = ref(0) // 拖动开始时的水平偏移量
-const startTranslateY = ref(0) // 拖动开始时的垂直偏移量
+// 预览组件引用
+const previewSectionRef = ref(null)
 
 async function loadPdfData() {
   if (!fileId.value) {
@@ -145,180 +141,31 @@ function generatePageContent() {
 
 // 显示页面图片
 async function displayPage(pageNumber) {
-  if (!previewContainer.value) return
-
   const page = pages.value.find(p => p.index === pageNumber)
-  if (!page || !page.image_url) {
-    previewContainer.value.innerHTML = '<div class="text-gray-500">页面图片不存在</div>'
+  if (!page) {
     return
   }
 
   // 更新选中页面信息
   selectedPageInfo.value = page
-  
-  // 重置缩放和偏移
-  scale.value = 1
-  translateX.value = 0
-  translateY.value = 0
-  
-  // 创建图片元素
-  const img = document.createElement('img')
-  img.alt = `第 ${pageNumber} 页`
-  img.src = page.image_url
-  img.style.maxWidth = '100%'
-  img.style.maxHeight = '100%'
-  img.style.objectFit = 'contain'
-  img.style.transition = 'transform 0.1s ease'
-  img.style.position = 'relative' // 确保图片定位正确
-  img.style.transformOrigin = 'center center' // 设置变换原点为中心
-  
-  // 添加加载状态
-  previewContainer.value.innerHTML = '<div class="text-gray-500">加载中...</div>'
-
-  img.onload = () => {
-    // 清空容器并添加图片
-    previewContainer.value.innerHTML = ''
-    previewContainer.value.appendChild(img)
-    
-    // 获取预览容器
-    const container = previewContainer.value
-    
-    // 应用变换并限制拖动范围
-    const applyTransform = () => {
-      // 应用变换
-      img.style.transform = `scale(${scale.value}) translate(${translateX.value}px, ${translateY.value}px)`
-      
-      // 计算容器和图片的尺寸
-      const containerRect = container.getBoundingClientRect()
-      const imgRect = img.getBoundingClientRect()
-      
-      // 计算图片实际尺寸（考虑缩放）
-      const imgWidth = img.naturalWidth * scale.value
-      const imgHeight = img.naturalHeight * scale.value
-      
-      // 计算容器可用尺寸
-      const containerWidth = containerRect.width
-      const containerHeight = containerRect.height
-      
-      // 计算最大偏移量
-      const maxTranslateX = Math.max(0, (imgWidth - containerWidth) / 2)
-      const maxTranslateY = Math.max(0, (imgHeight - containerHeight) / 2)
-      
-      // 限制偏移量范围
-      translateX.value = Math.max(-maxTranslateX, Math.min(maxTranslateX, translateX.value))
-      translateY.value = Math.max(-maxTranslateY, Math.min(maxTranslateY, translateY.value))
-      
-      // 重新应用变换（带有限制后的偏移量）
-      img.style.transform = `scale(${scale.value}) translate(${translateX.value}px, ${translateY.value}px)`
-    }
-    
-    // 鼠标按下事件 - 开始拖动
-    const handleMouseDown = (e) => {
-      isDragging.value = true
-      startX.value = e.clientX
-      startY.value = e.clientY
-      startTranslateX.value = translateX.value
-      startTranslateY.value = translateY.value
-      container.style.cursor = 'grabbing'
-    }
-    
-    // 鼠标移动事件 - 拖动中
-    const handleMouseMove = (e) => {
-      if (!isDragging.value) return
-      
-      const deltaX = e.clientX - startX.value
-      const deltaY = e.clientY - startY.value
-      
-      translateX.value = startTranslateX.value + deltaX
-      translateY.value = startTranslateY.value + deltaY
-      
-      // 应用变换并限制拖动范围
-      applyTransform()
-    }
-    
-    // 鼠标释放事件 - 结束拖动
-    const handleMouseUp = () => {
-      isDragging.value = false
-      container.style.cursor = 'grab'
-    }
-    
-    // 鼠标滚轮事件 - 缩放和滚动
-    const handleWheel = (e) => {
-      // 如果按下Ctrl键，则进行缩放
-      if (e.ctrlKey) {
-        e.preventDefault()
-        
-        // 计算缩放比例
-        const zoomSpeed = 0.1
-        const delta = e.deltaY > 0 ? -zoomSpeed : zoomSpeed
-        const newScale = Math.max(0.8, Math.min(1.5, scale.value + delta))
-        
-        // 计算缩放中心
-        const rect = container.getBoundingClientRect()
-        const mouseX = e.clientX - rect.left
-        const mouseY = e.clientY - rect.top
-        
-        // 计算缩放前后的鼠标位置差异
-        const prevScale = scale.value
-        scale.value = newScale
-        
-        // 调整偏移量，使缩放中心保持不变
-        translateX.value += mouseX * (prevScale - newScale) / prevScale
-        translateY.value += mouseY * (prevScale - newScale) / prevScale
-        
-        // 应用变换并限制拖动范围
-        applyTransform()
-      }
-      // 否则，允许默认滚动行为
-    }
-    
-    // 放大按钮事件
-    const handleZoomIn = () => {
-      scale.value = Math.min(1.5, scale.value + 0.1)
-      // 应用变换并限制拖动范围
-      applyTransform()
-    }
-    
-    // 缩小按钮事件
-    const handleZoomOut = () => {
-      scale.value = Math.max(0.8, scale.value - 0.1)
-      // 应用变换并限制拖动范围
-      applyTransform()
-    }
-    
-    // 绑定事件
-    img.addEventListener('mousedown', handleMouseDown)
-    document.addEventListener('mousemove', handleMouseMove)
-    document.addEventListener('mouseup', handleMouseUp)
-    container.addEventListener('wheel', handleWheel, { passive: false })
-    
-    // 查找并绑定工具栏按钮事件
-    const zoomInBtn = container.closest('.preview-section').querySelector('.zoom-in-btn')
-    const zoomOutBtn = container.closest('.preview-section').querySelector('.zoom-out-btn')
-    if (zoomInBtn) zoomInBtn.addEventListener('click', handleZoomIn)
-    if (zoomOutBtn) zoomOutBtn.addEventListener('click', handleZoomOut)
-    
-    // 组件卸载时解绑事件
-    const cleanup = () => {
-      img.removeEventListener('mousedown', handleMouseDown)
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-      container.removeEventListener('wheel', handleWheel)
-      if (zoomInBtn) zoomInBtn.removeEventListener('click', handleZoomIn)
-      if (zoomOutBtn) zoomOutBtn.removeEventListener('click', handleZoomOut)
-    }
-    
-    // 监听组件卸载事件
-    onBeforeUnmount(cleanup)
-  }
-
-  img.onerror = () => {
-    previewContainer.value.innerHTML = '<div class="text-red-500">图片加载失败</div>'
-  }
 }
 
 function select(p) {
   selectedPage.value = p
+}
+
+// 放大按钮事件
+function handleZoomIn() {
+  if (previewSectionRef.value) {
+    previewSectionRef.value.handleZoomIn()
+  }
+}
+
+// 缩小按钮事件
+function handleZoomOut() {
+  if (previewSectionRef.value) {
+    previewSectionRef.value.handleZoomOut()
+  }
 }
 
 watch(selectedPage, async (p) => {
@@ -480,10 +327,10 @@ function replacePunctuation() {
             <!-- 预览工具栏 -->
             <div class="p-3 bg-gray-50 border-b border-gray-200 flex items-center">
               <div class="flex space-x-1">
-                <button class="tool-btn zoom-in-btn">
+                <button class="tool-btn" @click="handleZoomIn">
                   <span class="iconify mr-1" data-icon="mdi:magnify-plus-outline" data-width="18">放大</span>
                 </button>
-                <button class="tool-btn zoom-out-btn">
+                <button class="tool-btn" @click="handleZoomOut">
                   <span class="iconify mr-1" data-icon="mdi:magnify-minus-outline" data-width="18">缩小</span>
                 </button>
                 <button class="tool-btn" @click="generatePageContent">
@@ -499,11 +346,12 @@ function replacePunctuation() {
               <div class="ml-auto text-sm text-gray-700">第 {{ selectedPage }} 页 ({{ pages.length }})</div>
             </div>
             <!-- 预览内容 -->
-            <div class="preview-section bg-gray-50">
-              <div class="items-center justify-center" ref="previewContainer">
-                <!-- 预览内容将通过JavaScript动态加载 -->
-              </div>
-            </div>
+            <PreviewSection
+              ref="previewSectionRef"
+              :image-url="selectedPageInfo.image_url"
+              :alt-text="`第 ${selectedPage} 页`"
+              class="h-full"
+            ></PreviewSection>
           </div>
           <!-- 右侧50% - 编辑区 -->
           <div class="w-1/2">
