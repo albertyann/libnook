@@ -269,7 +269,7 @@ function replacePunctuation() {
     <div class="flex flex-col md:flex-row bg-white rounded-xl shadow-lg overflow-hidden h-[800px]">
       <div class="flex h-full border-2 border-gray-200">
         <!-- 左侧导航区 -->
-        <div class="w-3/20 fixed-height-column border-r p-2 border-gray-200 hide-scrollbar border-1 w-[220px]">
+        <div class="w-3/20 fixed-height-column border-r p-2 border-gray-200 hide-scrollbar border-1 w-[220px]  h-[600px]">
           <!-- 标题栏 -->
           <div class="flex justify-between items-center">
             <!-- 跳转按钮 -->
