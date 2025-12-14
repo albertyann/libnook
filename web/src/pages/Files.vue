@@ -68,10 +68,10 @@ async function handleFileUpload(event) {
   if (!file) return
   
   // 检查文件类型是否为PDF
-  if (!file.type.match('application/pdf')) {
-    alert('请上传PDF文件')
-    return
-  }
+  // if (!file.type.match('application/pdf')) {
+  //   alert('请上传PDF文件')
+  //   return
+  // }
   
   // 检查文件大小，限制为100MB
   const maxSize = 100 * 1024 * 1024 // 100MB
@@ -160,7 +160,7 @@ onMounted(load)
           </div>
         <div class="space-x-2">
           <button class="rounded-md bg-green-500 text-white px-3 py-1" @click="triggerFileUpload" :disabled="uploading">
-            {{ uploading ? '上传中...' : '上传PDF' }}
+            {{ uploading ? '上传中...' : '上传' }}
           </button>
           <input type="file" ref="fileInput" @change="handleFileUpload" accept=".pdf" class="hidden" />
           <button class="rounded-md bg-gray-100 px-3 py-1" @click="router.push({name:'settings'})">OCR 配置</button>
@@ -172,11 +172,11 @@ onMounted(load)
         <table class="w-full">
           <thead class="bg-gray-50 text-left text-sm text-gray-600">
             <tr>
-              <th class="p-3">文件名</th>
+              <th class="p-3 w-70">文件名</th>
               <th class="p-3 w-24">页数</th>
-              <th class="p-3 w-40">上传时间</th>
-              <th class="p-3 w-30">识别进度</th>
-              <th class="p-3 w-30">校对进度</th>
+              <th class="p-3 w-30">上传时间</th>
+              <th class="p-3 w-30">识别</th>
+              <th class="p-3 w-50">校对</th>
               <th class="p-3 w-68">操作</th>
             </tr>
           </thead>
@@ -193,6 +193,9 @@ onMounted(load)
                 <div class="text-xs text-gray-500">
                   状态: {{ getStatusText(f.status) }}
                 </div>
+                <div v-if="f.error_message" class="text-xs text-red-500 mt-1">
+                  {{ f.error_message }}
+                </div>
               </td>
               <td class="p-3 text-sm">{{ f.total_pages || '-' }}</td>
               <td class="p-3 text-sm">{{ formatDate(f.created_at) }}</td>
@@ -204,12 +207,22 @@ onMounted(load)
               </td>
               <td class="p-3">
                 <div class="flex items-center gap-2 flex-wrap">
-                  <button class="rounded-md bg-blue-500 text-white px-3 py-1 text-sm hover:bg-blue-600 transition-colors" @click="previewFile(f.id)">预览</button>
-                  <button class="rounded-md bg-indigo-600 text-white px-3 py-1 text-sm hover:bg-indigo-700 transition-colors" @click="goWorkspace(f.id)">校对</button>
-                  <button class="rounded-md bg-gray-100 px-3 py-1 text-sm hover:bg-gray-200 transition-colors" @click="del(f.id)">删除</button>
-                  <div v-if="f.error_message" class="text-xs text-red-500 mt-1">
-                    {{ f.error_message }}
-                  </div>
+                  <button class="rounded-md bg-blue-400 text-white px-2 py-1 text-sm hover:bg-blue-500 transition-colors flex items-center gap-1" @click="previewFile(f.id)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                  </button>
+                  <button class="rounded-md bg-indigo-600 text-white px-2 py-1 text-sm hover:bg-indigo-700 transition-colors flex items-center gap-1" @click="goWorkspace(f.id)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" />
+                    </svg>
+                  </button>
+                  <button class="rounded-md bg-red-100 px-2 py-1 text-sm hover:bg-red-200 transition-colors flex items-center gap-1" @click="del(f.id)">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                  <!--  -->
                 </div>
               </td>
             </tr>

@@ -31,8 +31,8 @@ async def upload_pdf(
     上传PDF文件
     """
     # 检查文件类型
-    if not file.filename.endswith('.pdf'):
-        raise HTTPException(status_code=400, detail="只支持PDF文件")
+    # if not file.filename.endswith('.pdf'):
+    #     raise HTTPException(status_code=400, detail="只支持PDF文件")
     
     # 检查文件大小
     contents = await file.read()

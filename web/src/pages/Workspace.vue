@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref, watch, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-
+import { Icon } from '@iconify/vue'
 // 导入TUI Editor
 import { VueEditor } from "vue3-editor";
 
@@ -14,8 +14,6 @@ const pdfData = ref(null)
 const pages = ref([])
 const selectedPage = ref(1)
 const selectedPageInfo = ref({ocr_text: ""})
-const mdContent = ref(``)
-const previewContainer = ref(null)
 const loading = ref(false)
 const error = ref(null)
 const ocrAgain = ref(false) // 是否重新OCR
@@ -269,10 +267,19 @@ function replacePunctuation() {
   <div class="container mx-auto p-4 flex-grow">
     
     <div class="flex flex-col md:flex-row bg-white rounded-xl shadow-lg overflow-hidden h-[800px]">
-      <div class="flex h-full">
+      <div class="flex h-full border-2 border-gray-200">
         <!-- 左侧导航区 -->
-        <div class="w-3/20 fixed-height-column border-r border-gray-200 hide-scrollbar border-1 w-[220px]">
+        <div class="w-3/20 fixed-height-column border-r p-2 border-gray-200 hide-scrollbar border-1 w-[220px]">
           <!-- 标题栏 -->
+          <div class="flex justify-between items-center">
+            <!-- 跳转按钮 -->
+            <button
+              class="ml-2 bg-gray-200 hover:bg-gray-300 text-gray-700 px-3 py-1 rounded text-sm"
+              @click="$router.push('/files')"
+            >
+              <Icon icon="mdi:arrow-left" width="18" height="18" />
+            </button>
+          </div>
           <div class="border-b border-gray-200">
             <h2 class="text-xl font-bold text-gray-800">{{ pdfData?.original_filename || '文档导航' }}</h2>
           </div>
