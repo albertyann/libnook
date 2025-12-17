@@ -21,6 +21,9 @@ const ocrAgain = ref(false) // 是否重新OCR
 // 预览组件引用
 const previewSectionRef = ref(null)
 
+// 左侧页面列表容器引用
+const pagesContainerRef = ref(null)
+
 async function loadPdfData() {
   if (!fileId.value) {
     error.value = '文件ID不存在'
@@ -63,9 +66,27 @@ async function loadPdfData() {
       }))
     }
 
-    // 显示第一页
+    // 显示页面：从本地缓存读取上次选中的页面
     if (pages.value.length > 0) {
-      await displayPage(selectedPage.value)
+      // 从本地缓存读取上次选中的页面
+      const cacheKey = `file_${fileId.value}_page`
+      const cachedPage = localStorage.getItem(cacheKey)
+      let pageToSelect = selectedPage.value
+      console.log(cachedPage)
+      // 如果缓存存在且有效，则使用缓存的页面号
+      if (cachedPage) {
+        const cachedPageNum = parseInt(cachedPage)
+        if (!isNaN(cachedPageNum) && cachedPageNum >= 1 && cachedPageNum <= pages.value.length) {
+          pageToSelect = cachedPageNum
+          selectedPage.value = cachedPageNum
+        }
+      } else if (pageToSelect < 1 || pageToSelect > pages.value.length) {
+        // 如果当前选中页面无效，则默认选择第一页
+        pageToSelect = 1
+        selectedPage.value = 1
+      }
+      
+      await displayPage(pageToSelect)
     }
   } catch (err) {
     console.error('Error loading PDF data:', err)
@@ -137,6 +158,22 @@ function generatePageContent() {
   })
 }
 
+// 滚动到选中页面的缩略图
+function scrollToSelectedPage() {
+  if (!pagesContainerRef.value) return
+  
+  // 延迟执行，确保DOM已经更新
+  setTimeout(() => {
+    const selectedPageElement = document.querySelector('.bg-blue-50.border-blue-200')
+    if (selectedPageElement && pagesContainerRef.value) {
+      pagesContainerRef.value.scrollTo({
+        top: selectedPageElement.offsetTop - pagesContainerRef.value.offsetTop - 20,
+        behavior: 'smooth'
+      })
+    }
+  }, 100)
+}
+
 // 显示页面图片
 async function displayPage(pageNumber) {
   const page = pages.value.find(p => p.index === pageNumber)
@@ -146,10 +183,19 @@ async function displayPage(pageNumber) {
 
   // 更新选中页面信息
   selectedPageInfo.value = page
+  
+  // 滚动到选中页面的缩略图
+  scrollToSelectedPage()
 }
 
 function select(p) {
   selectedPage.value = p
+  
+  // 将当前页面信息存入本地缓存
+  if (fileId.value) {
+    const cacheKey = `file_${fileId.value}_page`
+    localStorage.setItem(cacheKey, p.toString())
+  }
 }
 
 // 放大按钮事件
@@ -296,7 +342,7 @@ function replacePunctuation() {
             </div>
           </div>
           <!-- 缩略图列表 -->
-          <div class="h-full overflow-y-auto p-3">
+          <div class="h-full overflow-y-auto p-3" ref="pagesContainerRef">
             <div v-if="loading" class="text-center py-8 text-gray-500">
               加载页面列表中...
             </div>

@@ -183,7 +183,7 @@ const handleWheel = (e) => {
   } else {
     // 否则，进行滚动上下移动
     e.preventDefault()
-    translateY.value += e.deltaY * 0.5 / scale.value
+    translateY.value += -e.deltaY * 0.5 / scale.value
     applyTransform()
   }
 }
