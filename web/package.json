@@ -12,6 +12,7 @@
     "@iconify/icons-mdi": "^1.2.48",
     "@iconify/vue": "^5.0.0",
     "@tailwindcss/typography": "^0.5.19",
+    "axios": "^1.13.2",
     "dompurify": "^3.3.0",
     "marked": "^17.0.1",
     "pdfjs-dist": "^3.10.111",

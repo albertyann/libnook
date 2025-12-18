@@ -573,7 +573,10 @@ def lm_studio_ocr(encoded_image: str):
             status_code=503,
             detail=f"处理LmStudio响应失败: {str(e)}"
         )
-    
+
+    # 替换HTML特殊字符
+    recognized_text = recognized_text.replace("<", "&lt;").replace(">", "&gt;")
+
     return recognized_text
 
 def easy_ocr(image: str):

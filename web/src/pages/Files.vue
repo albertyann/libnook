@@ -1,6 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import request from '../api/request'
+// import { Api } from '../api/api'
 
 const router = useRouter()
 const files = ref([])
@@ -9,16 +11,14 @@ const uploading = ref(false)
 const loading = ref(false)
 const error = ref(null)
 const total = ref(0)
+const isDragging = ref(false) // 拖放状态
+const dragCounter = ref(0) // 拖放计数器，用于处理子元素拖放事件
 
 async function load() {
   loading.value = true
   error.value = null
   try {
-    const response = await fetch('http://127.0.0.1:8000/api/pdf/files')
-    if (!response.ok) {
-      throw new Error('Failed to fetch files')
-    }
-    const data = await response.json()
+    const data = await request('/api/pdf/files', 'GET')
     files.value = data.files || []
     total.value = data.total || 0
   } catch (err) {
@@ -46,12 +46,7 @@ function previewFile(id) {
 
 async function del(id) {
   try {
-    const response = await fetch(`http://127.0.0.1:8000/api/pdf/${id}`, {
-      method: 'DELETE'
-    })
-    if (!response.ok) {
-      throw new Error('Failed to delete file')
-    }
+    await request(`/api/pdf/${id}`, 'DELETE')
     load() // 删除成功后重新加载列表
   } catch (err) {
     console.error('Error deleting file:', err)
@@ -61,6 +56,86 @@ async function del(id) {
 
 function triggerFileUpload() {
   fileInput.value.click()
+}
+
+// 拖放事件处理函数
+function handleDragEnter(e) {
+  e.preventDefault()
+  e.stopPropagation()
+  dragCounter.value++
+  if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+    isDragging.value = true
+  }
+}
+
+function handleDragLeave(e) {
+  e.preventDefault()
+  e.stopPropagation()
+  dragCounter.value--
+  if (dragCounter.value === 0) {
+    isDragging.value = false
+  }
+}
+
+function handleDragOver(e) {
+  e.preventDefault()
+  e.stopPropagation()
+  return false
+}
+
+function handleDrop(e) {
+  e.preventDefault()
+  e.stopPropagation()
+  isDragging.value = false
+  dragCounter.value = 0
+  
+  const files = e.dataTransfer.files
+  if (files && files.length > 0) {
+    handleDroppedFiles(files)
+  }
+  return false
+}
+
+// 处理拖放的文件
+async function handleDroppedFiles(files) {
+  // 只处理第一个文件
+  const file = files[0]
+  if (!file) return
+  
+  // 检查文件类型是否为PDF
+  // if (!file.type.match('application/pdf')) {
+  //   alert('请上传PDF文件')
+  //   return
+  // }
+  
+  // 检查文件大小，限制为100MB
+  const maxSize = 100 * 1024 * 1024 // 100MB
+  if (file.size > maxSize) {
+    alert('文件大小不能超过100MB')
+    return
+  }
+  
+  // 设置上传状态
+  uploading.value = true
+  
+  try {
+    const formData = new FormData()
+    formData.append('file', file)
+    
+    // 使用axios上传文件，需要设置Content-Type为multipart/form-data
+    await request('/api/pdf/upload', 'POST', formData, {
+      'Content-Type': 'multipart/form-data'
+    })
+    
+    await load() // 重新加载文件列表
+    console.log('文件上传成功:', file.name)
+  } catch (err) {
+    console.error('文件上传失败:', err)
+    alert('文件上传失败，请重试')
+  } finally {
+    // 重置上传状态
+    uploading.value = false
+  }
 }
 
 async function handleFileUpload(event) {
@@ -87,14 +162,10 @@ async function handleFileUpload(event) {
     const formData = new FormData()
     formData.append('file', file)
     
-    const response = await fetch('http://127.0.0.1:8000/api/pdf/upload', {
-      method: 'POST',
-      body: formData
+    // 使用axios上传文件，需要设置Content-Type为multipart/form-data
+    await request('/api/pdf/upload', 'POST', formData, {
+      'Content-Type': 'multipart/form-data'
     })
-    
-    if (!response.ok) {
-      throw new Error('文件上传失败')
-    }
     
     await load() // 重新加载文件列表
     console.log('文件上传成功:', file.name)
@@ -151,7 +222,14 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 p-6">
+  <div 
+    class="min-h-screen bg-gray-50 p-6"
+    :class="{ 'dragging': isDragging }"
+    @dragenter="handleDragEnter"
+    @dragover="handleDragOver"
+    @dragleave="handleDragLeave"
+    @drop="handleDrop"
+  >
     <div class="max-w-5xl mx-auto">
       <div class="flex items-center justify-between mb-4">
           <h1 class="text-2xl font-semibold">文件管理</h1>
@@ -165,6 +243,18 @@ onMounted(load)
           <input type="file" ref="fileInput" @change="handleFileUpload" accept=".pdf" class="hidden" />
           <button class="rounded-md bg-gray-100 px-3 py-1" @click="router.push({name:'settings'})">OCR 配置</button>
           <button class="rounded-md bg-gray-100 px-3 py-1" @click="router.push({name:'home'})">返回首页</button>
+        </div>
+      </div>
+
+      <!-- 拖放提示区域 -->
+      <div 
+        v-if="isDragging" 
+        class="fixed inset-0 bg-blue-50 bg-opacity-90 z-50 flex items-center justify-center pointer-events-none"
+      >
+        <div class="bg-white rounded-lg shadow-xl p-8 text-center">
+          <div class="text-6xl mb-4">📄</div>
+          <h3 class="text-xl font-semibold mb-2">拖放文件到这里上传</h3>
+          <p class="text-gray-600">支持 PDF 文件，最大 100MB</p>
         </div>
       </div>
 
@@ -235,4 +325,10 @@ onMounted(load)
     </div>
   </div>
 </template>
+
+<style scoped>
+.dragging {
+  background-color: #e0f2fe;
+}
+</style>
 

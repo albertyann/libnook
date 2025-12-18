@@ -24,6 +24,25 @@ const previewSectionRef = ref(null)
 // 左侧页面列表容器引用
 const pagesContainerRef = ref(null)
 
+// 编辑器引用
+const editorRef = ref(null)
+
+// 处理键盘事件
+function handleKeyDown(event) {
+  // 检查是否按下了Ctrl+S
+  if (event.ctrlKey && event.key === 's') {
+    // 阻止浏览器默认保存行为
+    event.preventDefault()
+    
+    // 检查焦点是否在编辑器内
+    const editorElement = editorRef.value?.$el
+    if (editorElement && editorElement.contains(document.activeElement)) {
+      // 调用保存函数
+      saveContentToFile()
+    }
+  }
+}
+
 async function loadPdfData() {
   if (!fileId.value) {
     error.value = '文件ID不存在'
@@ -124,38 +143,54 @@ async function againOcr() {
     }
 }
 
+// 尝试从API获取该页面的OCR结果
+async function fetchPageOcr(page) {
+  try {
+    const response = await fetch(`http://127.0.0.1:8000/api/pdf/${fileId.value}/ocr/${page}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        again: ocrAgain.value
+      })
+    })
+    if (response.ok) {
+      const pageData = await response.json()
+      return pageData.recognized_text || ''
+    }
+    ocrAgain.value = false
+  } catch (err) {
+    ocrAgain.value = false
+    console.error('Error fetching OCR result:', err)
+  }
+  return ''
+}
+
 // 为当前页面生成内容
 function generatePageContent() {
   if (!fileId.value) return
 
-  // 尝试从API获取该页面的OCR结果
-  async function fetchPageOcr() {
-    try {
-      const response = await fetch(`http://127.0.0.1:8000/api/pdf/${fileId.value}/ocr/${selectedPage.value}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          again: ocrAgain.value
-        })
-      })
-      if (response.ok) {
-        const pageData = await response.json()
-        return pageData.recognized_text || ''
-      }
-      ocrAgain.value = false
-    } catch (err) {
-      ocrAgain.value = false
-      console.error('Error fetching OCR result:', err)
-    }
-    return ''
-  }
-
   // 异步获取OCR结果
-  fetchPageOcr().then(ocrText => {
+  fetchPageOcr(selectedPage.value).then(ocrText => {
     selectedPageInfo.value.ocr_text = ocrText
   })
+}
+
+// 批量OCR
+async function batchOcr() {
+  try {
+    const page = selectedPage.value
+    for (let i = page; i <= page + 10; i++) {
+      // console.log(pages.value[i].index)
+      let ocrText = await fetchPageOcr(i)
+      if (ocrText) {
+        pages.value[i].ocr_text = ocrText
+      }
+    }
+  } catch (err) {
+    console.error('result:', err)
+  }
 }
 
 // 滚动到选中页面的缩略图
@@ -218,11 +253,17 @@ watch(selectedPage, async (p) => {
 
 onMounted(async () => {
   await loadPdfData()
+  
+  // 添加键盘事件监听器
+  document.addEventListener('keydown', handleKeyDown)
 })
 
 onBeforeUnmount(() => {
   const src = route.query.src
   if (src?.startsWith('blob:')) URL.revokeObjectURL(src)
+  
+  // 移除键盘事件监听器
+  document.removeEventListener('keydown', handleKeyDown)
 })
 
 // 保存状态相关
@@ -389,6 +430,9 @@ function replacePunctuation() {
                 <button class="tool-btn" @click="generatePageContent">
                   <span class="iconify mr-1" data-icon="mdi:fullscreen" data-width="18">OCR</span>
                 </button>
+                <button class="tool-btn" @click="batchOcr">
+                  <span class="iconify mr-1" data-icon="mdi:fullscreen" data-width="18">批量OCR</span>
+                </button>
                 <button class="tool-btn" @click="againOcr">
                   <span class="iconify mr-1" data-icon="mdi:fullscreen" data-width="18">重新OCR</span>
                 </button>
@@ -416,6 +460,7 @@ function replacePunctuation() {
                 ref="editorRef"
                 style="height: 90%;"
               />
+              <!-- <textarea v-text="selectedPageInfo.ocr_text" class="m-3 w-full h-[760px]" /> -->
             </div>
             <!-- 保存状态 -->
             <div class="bg-gray-50 border-t border-gray-200 flex items-center">
