@@ -27,6 +27,9 @@ const pagesContainerRef = ref(null)
 // 编辑器引用
 const editorRef = ref(null)
 
+// 左侧页面列表是否有焦点
+const pagesListHasFocus = ref(false)
+
 // 处理键盘事件
 function handleKeyDown(event) {
   // 检查是否按下了Ctrl+S
@@ -39,6 +42,27 @@ function handleKeyDown(event) {
     if (editorElement && editorElement.contains(document.activeElement)) {
       // 调用保存函数
       saveContentToFile()
+    }
+  }
+  
+  // 检查是否按下了上下箭头键，且左侧页面列表有焦点
+  if (pagesListHasFocus.value && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
+    // 阻止默认滚动行为
+    event.preventDefault()
+    
+    // 计算新的页面号
+    let newPage = selectedPage.value
+    if (event.key === 'ArrowUp') {
+      // 向上箭头：上一页
+      newPage = Math.max(1, selectedPage.value - 1)
+    } else if (event.key === 'ArrowDown') {
+      // 向下箭头：下一页
+      newPage = Math.min(pages.value.length, selectedPage.value + 1)
+    }
+    
+    // 如果页面号有变化，则选择新页面
+    if (newPage !== selectedPage.value) {
+      select(newPage)
     }
   }
 }
@@ -340,6 +364,7 @@ function replacePunctuation() {
     .replace(/~/g, '～')
     .replace(/\(/g, '（')
     .replace(/\)/g, '）')
+    .replace(/\?/g, '？')
     .replace(/:\s*/g, '：')
     .replace(/;\s*/g, '；')
     .replace(/!\s*/g, '！')
@@ -383,7 +408,13 @@ function replacePunctuation() {
             </div>
           </div>
           <!-- 缩略图列表 -->
-          <div class="h-full overflow-y-auto p-3" ref="pagesContainerRef">
+          <div 
+            class="h-full overflow-y-auto p-3" 
+            ref="pagesContainerRef"
+            @mouseenter="pagesListHasFocus = true"
+            @mouseleave="pagesListHasFocus = false"
+            tabindex="0"
+          >
             <div v-if="loading" class="text-center py-8 text-gray-500">
               加载页面列表中...
             </div>
@@ -417,7 +448,7 @@ function replacePunctuation() {
         <!-- 右侧区域 - 85% -->
         <div class="w-17/20 fixed-height-column flex">
           <!-- 左侧50% - 预览区 -->
-          <div class="w-1/2 border-r border-gray-200 border-2 hide-scrollbar w-[640px] h-[600px]">
+          <div class="w-1/2 border-r border-gray-200 border-2 hide-scrollbar w-[640px] h-full">
             <!-- 预览工具栏 -->
             <div class="p-3 bg-gray-50 border-b border-gray-200 flex items-center">
               <div class="flex space-x-1">
