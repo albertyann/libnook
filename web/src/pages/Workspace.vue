@@ -2,8 +2,9 @@
 import { onMounted, ref, watch, onBeforeUnmount } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Icon } from '@iconify/vue'
-// 导入TUI Editor
-import { VueEditor } from "vue3-editor";
+// 导入Quill编辑器
+import { QuillEditor } from '@vueup/vue-quill'
+import '@vueup/vue-quill/dist/vue-quill.snow.css';
 
 // 导入PreviewSection组件
 import PreviewSection from '../components/PreviewSection.vue';
@@ -29,6 +30,23 @@ const editorRef = ref(null)
 
 // 左侧页面列表是否有焦点
 const pagesListHasFocus = ref(false)
+
+// Quill编辑器配置
+const editorOptions = {
+  theme: 'snow',
+  placeholder: '请输入内容...',
+  modules: {
+    toolbar: [
+      [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+      ['bold', 'italic', 'underline', 'strike'],
+      [{ 'color': [] }, { 'background': [] }],
+      [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+      [{ 'indent': '-1'}, { 'indent': '+1' }],
+      [{ 'align': [] }],
+      ['clean']
+    ]
+  }
+}
 
 // 处理键盘事件
 function handleKeyDown(event) {
@@ -370,6 +388,7 @@ function replacePunctuation() {
     .replace(/!\s*/g, '！')
     .replace(/\s*“/g, '“')
     .replace(/”\s*/g, '”')
+    .replace(/”\n/g, '')
     .replace(/\./g, '。');
 }
 
@@ -485,10 +504,11 @@ function replacePunctuation() {
           <div class="w-1/2">
             <!-- 编辑内容区 -->
             <div class="editor-content h-[760px] overflow-hidden">
-              <VueEditor
-                v-model="selectedPageInfo.ocr_text"
-                :editorToolbar="[]"
+              <QuillEditor
+                v-model:content="selectedPageInfo.ocr_text"
+                :options="editorOptions"
                 ref="editorRef"
+                contentType="text"
                 style="height: 90%;"
               />
               <!-- <textarea v-text="selectedPageInfo.ocr_text" class="m-3 w-full h-[760px]" /> -->
