@@ -109,8 +109,8 @@ def process_pdf(db: Session, file_id: str, file_path: str) -> None:
             # 为每一页创建记录
             for page_number in range(pdf_info['total_pages']):
                 pdf_page = PDFPage(
-                    document_id=file_id,
-                    page_number=page_number + 1  # 页码从1开始
+                    document_id = file_id,
+                    page_number = page_number + 1  # 页码从1开始
                 )
                 db.add(pdf_page)
             
@@ -152,7 +152,30 @@ def process_pdf(db: Session, file_id: str, file_path: str) -> None:
                 # 继续处理，但跳过OCR步骤
             
             # TODO: 实现OCR步骤
+            if pdf_doc.pdf_type == "text-based":
+                # 对每一页执行OCR
+                for page_number in range(pdf_info['total_pages']):
+                    pdf_page = db.query(PDFPage).filter(
+                        PDFPage.document_id == file_id,
+                        PDFPage.page_number == page_number + 1
+                    ).first()
+
+                    logger.info(f"处理PDF页面 {page_number + 1} 进行OCR")
+                    
+                    if pdf_page and not pdf_page.ocr_status:
+                       # 只直接将pdf转为文本并保存
+                       page_text = extract_text_from_page(file_path, page_number + 1)
+                       pdf_page.ocr_text = page_text
+                       pdf_page.ocr_status = True
+        db.commit()
     except Exception as e:
+        if pdf_doc.pdf_type == "text-based":
+            # 回滚数据库操作
+            db.rollback()
+            error_msg = f"PDF OCR处理失败: {str(e)}"
+            logger.error(error_msg)
+            update_pdf_status(db, file_id, ProcessingStatus.ERROR, error_msg)
+        
         error_msg = f"PDF处理失败: {str(e)}"
         logger.error(error_msg)
         update_pdf_status(db, file_id, ProcessingStatus.ERROR, error_msg)

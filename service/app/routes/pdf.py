@@ -10,7 +10,6 @@ import json
 from sqlalchemy.orm import Session
 from app.database.database import get_db
 from app.services.pdf_service import create_pdf_record, process_pdf, get_pdf_document, get_pdf_pages
-from openai import OpenAI
 
 # 加载环境变量
 load_dotenv()
@@ -41,7 +40,7 @@ async def upload_pdf(
         raise HTTPException(status_code = 413, detail=f"文件大小超过限制 ({MAX_FILE_SIZE / 1048576}MB)")
     
     # 生成唯一文件名
-    file_id = str(uuid.uuid4())
+    file_id = str(uuid.uuid4())[0:8]
     file_path = os.path.join(UPLOAD_DIR, f"{file_id}.pdf")
     
     # 保存文件
@@ -455,7 +454,6 @@ async def perform_ocr_on_page(file_id: str, page_number: int, db: Session = Depe
         ).first()
 
         page.ocr_status = True
-        # page.updated_at = datetime.now()
 
         db.commit()
         return {"message": f"执行成功"}
@@ -554,7 +552,6 @@ async def perform_ocr_on_page(file_id: str, page_number: int, item: OcrItem, db:
                 logger.warning("OCR识别结果为空")
             
             try:
-                
                 if page:
                     # 更新已存在的页面记录
                     page.ocr_text = recognized_text

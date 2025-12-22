@@ -41,7 +41,7 @@ def extract_text_from_page(file_path: str, page_number: int) -> Optional[str]:
             if page_number < 0 or page_number >= len(reader.pages):
                 raise ValueError(f"页码超出范围: {page_number}")
             
-            page = reader.pages[page_number]
+            page = reader.pages[page_number - 1]
             text = page.extract_text()
             
             return text
