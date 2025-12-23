@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 # 创建必要的目录
 os.makedirs(os.getenv("UPLOAD_DIR", "./uploads"), exist_ok=True)
 os.makedirs(os.getenv("IMAGES_DIR", "./images"), exist_ok=True)
+os.makedirs(os.getenv("NOTES_IMAGES_DIR", "./notes_images"), exist_ok=True)
 
 # 创建FastAPI应用
 app = FastAPI(
@@ -48,8 +49,9 @@ async def health_check():
     return {"status": "healthy"}
 
 # 导入路由
-from app.routes import pdf
+from app.routes import pdf, notes
 app.include_router(pdf.router, prefix="/api/pdf", tags=["pdf"])
+app.include_router(notes.router, prefix="/api", tags=["notes"])
 
 if __name__ == "__main__":
     import uvicorn

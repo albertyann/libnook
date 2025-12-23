@@ -1,5 +1,4 @@
 from app.database.database import engine, Base
-from app.database.models import PDFDocument, PDFPage
 import logging
 
 logger = logging.getLogger(__name__)
