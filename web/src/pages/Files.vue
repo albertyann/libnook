@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import request from '../api/request'
 // import { Api } from '../api/api'
@@ -13,12 +13,27 @@ const error = ref(null)
 const total = ref(0)
 const isDragging = ref(false) // 拖放状态
 const dragCounter = ref(0) // 拖放计数器，用于处理子元素拖放事件
+const showNoteModal = ref(false) // 笔记弹窗显示状态
+const noteTitle = ref('') // 笔记标题
+const noteSubmitting = ref(false) // 笔记提交状态
+const noteTitleInput = ref(null) // 笔记标题输入框引用
+
+// 监听弹窗显示状态，自动聚焦输入框
+watch(showNoteModal, (newVal) => {
+  if (newVal) {
+    nextTick(() => {
+      if (noteTitleInput.value) {
+        noteTitleInput.value.focus()
+      }
+    })
+  }
+})
 
 async function load() {
   loading.value = true
   error.value = null
   try {
-    const data = await request('/api/pdf/files', 'GET')
+    const data = await request('/api/file/list', 'GET')
     files.value = data.files || []
     total.value = data.total || 0
   } catch (err) {
@@ -46,7 +61,7 @@ function previewFile(id) {
 
 async function del(id) {
   try {
-    await request(`/api/pdf/${id}`, 'DELETE')
+    await request(`/api/file/${id}`, 'DELETE')
     load() // 删除成功后重新加载列表
   } catch (err) {
     console.error('Error deleting file:', err)
@@ -59,6 +74,34 @@ function triggerFileUpload() {
 }
 
 // 拖放事件处理函数
+// 创建笔记
+async function createNote() {
+  if (!noteTitle.value.trim()) {
+    alert('请输入笔记标题')
+    return
+  }
+  
+  noteSubmitting.value = true
+  try {
+    const data = await request('/api/notes', 'POST', {
+      title: noteTitle.value.trim()
+    })
+    
+    // 创建成功
+    alert('笔记创建成功')
+    showNoteModal.value = false
+    noteTitle.value = ''
+    
+    // 可以在这里跳转到笔记编辑页面或刷新笔记列表
+    console.log('创建的笔记:', data)
+  } catch (err) {
+    console.error('Error creating note:', err)
+    alert('创建笔记失败，请稍后重试')
+  } finally {
+    noteSubmitting.value = false
+  }
+}
+
 function handleDragEnter(e) {
   e.preventDefault()
   e.stopPropagation()
@@ -123,7 +166,7 @@ async function handleDroppedFiles(files) {
     formData.append('file', file)
     
     // 使用axios上传文件，需要设置Content-Type为multipart/form-data
-    await request('/api/pdf/upload', 'POST', formData, {
+    await request('/api/file/upload', 'POST', formData, {
       'Content-Type': 'multipart/form-data'
     })
     
@@ -163,7 +206,7 @@ async function handleFileUpload(event) {
     formData.append('file', file)
     
     // 使用axios上传文件，需要设置Content-Type为multipart/form-data
-    await request('/api/pdf/upload', 'POST', formData, {
+    await request('/api/file/upload', 'POST', formData, {
       'Content-Type': 'multipart/form-data'
     })
     
@@ -241,6 +284,8 @@ onMounted(load)
             {{ uploading ? '上传中...' : '上传' }}
           </button>
           <input type="file" ref="fileInput" @change="handleFileUpload" accept=".pdf" class="hidden" />
+          <button class="rounded-md bg-blue-500 text-white px-3 py-1" @click="showNoteModal = true">新增笔记</button>
+          <button class="rounded-md bg-purple-500 text-white px-3 py-1" @click="router.push({name:'note'})">笔记管理</button>
           <button class="rounded-md bg-gray-100 px-3 py-1" @click="router.push({name:'settings'})">OCR 配置</button>
           <button class="rounded-md bg-gray-100 px-3 py-1" @click="router.push({name:'home'})">返回首页</button>
         </div>
@@ -321,6 +366,36 @@ onMounted(load)
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- 笔记弹窗 -->
+  <div v-if="showNoteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+    <div class="bg-white rounded-lg p-6 w-96">
+      <h3 class="text-lg font-medium mb-4">新增笔记</h3>
+      <input
+        v-model="noteTitle"
+        type="text"
+        placeholder="请输入笔记标题"
+        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+        @keyup.enter="createNote"
+        ref="noteTitleInput"
+      />
+      <div class="flex justify-end space-x-2">
+        <button
+          @click="showNoteModal = false; noteTitle = ''"
+          class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+        >
+          取消
+        </button>
+        <button
+          @click="createNote"
+          :disabled="noteSubmitting || !noteTitle.trim()"
+          class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300"
+        >
+          {{ noteSubmitting ? '创建中...' : '创建' }}
+        </button>
       </div>
     </div>
   </div>

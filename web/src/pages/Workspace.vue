@@ -388,7 +388,6 @@ function replacePunctuation() {
     .replace(/!\s*/g, '！')
     .replace(/\s*“/g, '“')
     .replace(/”\s*/g, '”')
-    .replace(/”\n/g, '')
     .replace(/\./g, '。');
 }
 
