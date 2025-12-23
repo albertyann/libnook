@@ -56,7 +56,7 @@ async def upload_pdf(
             create_pdf_record(db, file_id, file.filename, file_path)
             
             # 添加后台任务处理PDF
-            background_tasks.add_task(process_pdf_background, file_id, file_path)
+            # background_tasks.add_task(process_pdf_background, file_id, file_path)
         finally:
             db.close()
         
@@ -140,7 +140,7 @@ async def get_ocr_results(file_id: str, page: int = None, db: Session = Depends(
         "results": results
     }
 
-@router.get("/files")
+@router.get("/list")
 async def get_pdf_files_list(db: Session = Depends(get_db)):
     """
     获取所有PDF文件列表

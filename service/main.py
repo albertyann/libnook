@@ -50,7 +50,7 @@ async def health_check():
 
 # 导入路由
 from app.routes import pdf, notes
-app.include_router(pdf.router, prefix="/api/pdf", tags=["pdf"])
+app.include_router(pdf.router, prefix="/api/file", tags=["file"])
 app.include_router(notes.router, prefix="/api", tags=["notes"])
 
 if __name__ == "__main__":
