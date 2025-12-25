@@ -285,7 +285,7 @@ onMounted(load)
           </button>
           <input type="file" ref="fileInput" @change="handleFileUpload" accept=".pdf" class="hidden" />
           <button class="rounded-md bg-blue-500 text-white px-3 py-1" @click="showNoteModal = true">新增笔记</button>
-          <button class="rounded-md bg-purple-500 text-white px-3 py-1" @click="router.push({name:'note'})">笔记管理</button>
+          <button class="rounded-md bg-purple-500 text-white px-3 py-1" @click="router.push({name:'notes'})">笔记管理</button>
           <button class="rounded-md bg-gray-100 px-3 py-1" @click="router.push({name:'settings'})">OCR 配置</button>
           <button class="rounded-md bg-gray-100 px-3 py-1" @click="router.push({name:'home'})">返回首页</button>
         </div>
