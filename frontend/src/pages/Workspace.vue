@@ -313,10 +313,11 @@ async function saveContentToFile() {
   saveError.value = ''
 
   try {
-    const response = Api.saveContent(fileId.value, selectedPage.value, {
+    const response = await Api.saveContent(fileId.value, selectedPage.value, {
       page_number: selectedPage.value,
       content: selectedPageInfo.value.ocr_text,
     })
+    console.log(response)
 
     if (response.status != 'success') {
       throw new Error('保存失败')
