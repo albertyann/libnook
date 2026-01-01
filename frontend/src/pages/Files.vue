@@ -54,7 +54,7 @@ function previewFile(id) {
   const file = files.value.find(f => f.id === id)
   if (file) {
     // 使用文件ID构建预览URL
-    const previewUrl = `http://127.0.0.1:8000/api/pdf/${id}`
+    const previewUrl = `http://127.0.0.1:8000/api/file/${id}`
     window.open(previewUrl, '_blank', 'width=900,height=800,toolbar=no,menubar=no,scrollbars=yes,resizable=yes')
   }
 }

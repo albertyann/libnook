@@ -8,6 +8,7 @@ import '@vueup/vue-quill/dist/vue-quill.snow.css';
 
 // 导入PreviewSection组件
 import PreviewSection from '../components/PreviewSection.vue';
+import Api from '@/api/file'
 
 const route = useRoute()
 const fileId = ref(route.query.id || '')
@@ -95,20 +96,19 @@ async function loadPdfData() {
   error.value = null
 
   try {
-    const response = await fetch(`http://127.0.0.1:8000/api/pdf/${fileId.value}/info`)
-    if (!response.ok) {
+    const response = await Api.info(fileId.value)
+    if (response.status == 'success') {
       throw new Error('Failed to fetch PDF data')
     }
 
-    const data = await response.json()
+    const data = response
     pdfData.value = data
-    console.log(data.pages)
 
     // 根据API返回的数据构建页面列表
     if (data.pages && Array.isArray(data.pages)) {
       pages.value = data.pages.map(page => ({
         index: page.page_number,
-        image_url: `http://127.0.0.1:8000/api/pdf/${fileId.value}/image/${page.page_number}`,
+        image_url: `http://127.0.0.1:8000/api/file/${fileId.value}/image/${page.page_number}`,
         thumb_url: page.thumb_url || page.image_url,
         ocr_text: page.ocr_text,
         width: page.width,
@@ -119,8 +119,8 @@ async function loadPdfData() {
       const totalPages = data.total_pages || 0
       pages.value = Array.from({ length: totalPages }, (_, i) => ({
         index: i + 1,
-        image_url: `http://127.0.0.1:8000/api/pdf/${fileId.value}/image/${i + 1}`,
-        thumb_url: `http://127.0.0.1:8000/api/pdf/${fileId.value}/image/${i + 1}`,
+        image_url: `http://127.0.0.1:8000/api/file/${fileId.value}/image/${i + 1}`,
+        thumb_url: `http://127.0.0.1:8000/api/file/${fileId.value}/image/${i + 1}`,
         ocr_text: "",
         width: null,
         height: null
@@ -159,16 +159,10 @@ async function loadPdfData() {
 
 async function noOcr() {
   try {
-      const response = await fetch(`http://127.0.0.1:8000/api/pdf/${fileId.value}/noocr/${selectedPage.value}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          again: ocrAgain.value
-        })
+      const response = await Api.noOcr(fileId.value, selectedPage.value, {
+        again: ocrAgain.value
       })
-      if (response.ok) {
+      if (response.status == 'success') {
         console.log(response.json())
       }
     } catch (err) {
@@ -188,18 +182,12 @@ async function againOcr() {
 // 尝试从API获取该页面的OCR结果
 async function fetchPageOcr(page) {
   try {
-    const response = await fetch(`http://127.0.0.1:8000/api/pdf/${fileId.value}/ocr/${page}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        again: ocrAgain.value
-      })
+    const response = await Api.ocr(fileId.value, page, {
+      again: ocrAgain.value
     })
-    if (response.ok) {
-      const pageData = await response.json()
-      return pageData.recognized_text || ''
+    console.log(response)
+    if (response.status == 'success') {
+      return response.recognized_text || ''
     }
     ocrAgain.value = false
   } catch (err) {
@@ -224,7 +212,6 @@ async function batchOcr() {
   try {
     const page = selectedPage.value
     for (let i = page; i <= page + 10; i++) {
-      // console.log(pages.value[i].index)
       let ocrText = await fetchPageOcr(i)
       if (ocrText) {
         pages.value[i].ocr_text = ocrText
@@ -253,6 +240,7 @@ function scrollToSelectedPage() {
 
 // 显示页面图片
 async function displayPage(pageNumber) {
+  console.log(pageNumber)
   const page = pages.value.find(p => p.index === pageNumber)
   if (!page) {
     return
@@ -260,7 +248,9 @@ async function displayPage(pageNumber) {
 
   // 更新选中页面信息
   selectedPageInfo.value = page
-  
+  if (!page.ocr_text) {
+    selectedPageInfo.value.ocr_text = ' '
+  }
   // 滚动到选中页面的缩略图
   scrollToSelectedPage()
 }
@@ -323,18 +313,12 @@ async function saveContentToFile() {
   saveError.value = ''
 
   try {
-    const response = await fetch(`http://127.0.0.1:8000/api/pdf/content/${fileId.value}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        page_number: selectedPage.value,
-        content: selectedPageInfo.value.ocr_text,
-      })
+    const response = Api.saveContent(fileId.value, selectedPage.value, {
+      page_number: selectedPage.value,
+      content: selectedPageInfo.value.ocr_text,
     })
 
-    if (!response.ok) {
+    if (response.status != 'success') {
       throw new Error('保存失败')
     }
 
