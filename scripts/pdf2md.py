@@ -166,6 +166,7 @@ class PDFToMarkdownConverter:
             
             if response.status_code == 200:
                 result = response.json()
+                print(result)
                 text = result['choices'][0]['message']['content']
                 logger.info(f"OCR完成: {image_path}")
                 return text
