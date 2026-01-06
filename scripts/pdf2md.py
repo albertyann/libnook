@@ -122,17 +122,6 @@ class PDFToMarkdownConverter:
             # 构建请求数据
             messages = [
                 {
-                    "role": "system",
-                    "content": """你是一个专业的OCR识别助手。请识别图片中的所有文字内容，并遵循以下规则：
-1. 准确识别所有文字，保持原文格式
-2. 移除页眉、页脚、页码等无关信息
-3. 保留标题、段落、列表等结构
-4. 如果遇到表格，用Markdown表格格式表示
-5. 数学公式用LaTeX格式表示
-6. 代码块用Markdown代码块格式表示
-返回纯文本内容，不要添加额外说明。"""
-                },
-                {
                     "role": "user",
                     "content": [
                         {
