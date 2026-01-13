@@ -289,6 +289,17 @@ function getStatusText(status) {
   return statusMap[status] || status
 }
 
+function getStatusBadgeClass(status) {
+  const classMap = {
+    'pending': 'badge-warning',
+    'processing': 'badge-info',
+    'images_generated': 'badge-info',
+    'completed': 'badge-success',
+    'error': 'badge-danger'
+  }
+  return classMap[status] || 'badge-gray'
+}
+
 function getProgress(file) {
   if (file.total_pages && file.total_pages > 0) {
     return Math.round((file.pages_processed / file.total_pages) * 100)
@@ -301,33 +312,35 @@ onMounted(load)
 
 <template>
   <div 
-    class="min-h-screen bg-gray-50 p-6"
+    class="page-container p-6"
     :class="{ 'dragging': isDragging }"
     @dragenter="handleDragEnter"
     @dragover="handleDragOver"
     @dragleave="handleDragLeave"
     @drop="handleDrop"
   >
-    <div class="max-w-5xl mx-auto">
-      <div class="flex items-center justify-between mb-4">
-          <h1 class="text-2xl font-semibold">文件管理</h1>
-          <div v-if="total > 0" class="text-sm text-gray-500">
-            共 {{ total }} 个文件 ({{ filteredFiles.length }} 个显示)
+    <div class="max-w-6xl mx-auto">
+      <div class="page-header">
+          <h1 class="page-title">文件管理</h1>
+          <div class="flex items-center gap-4">
+            <div v-if="total > 0" class="text-sm text-gray-500">
+              共 {{ total }} 个文件 ({{ filteredFiles.length }} 个显示)
+            </div>
+            <div class="flex gap-2">
+              <button class="btn-primary" @click="triggerFileUpload" :disabled="uploading">
+                {{ uploading ? '上传中...' : '上传' }}
+              </button>
+              <input type="file" ref="fileInput" @change="handleFileUpload" accept=".pdf" class="hidden" />
+              <button class="btn-primary" @click="showNoteModal = true">新增笔记</button>
+              <button class="btn-secondary" @click="router.push({name:'notes'})">笔记管理</button>
+              <button class="btn-secondary" @click="router.push({name:'settings'})">OCR 配置</button>
+              <button class="btn-secondary" @click="router.push({name:'home'})">返回首页</button>
+            </div>
           </div>
-        <div class="space-x-2">
-          <button class="rounded-md bg-green-500 text-white px-3 py-1" @click="triggerFileUpload" :disabled="uploading">
-            {{ uploading ? '上传中...' : '上传' }}
-          </button>
-          <input type="file" ref="fileInput" @change="handleFileUpload" accept=".pdf" class="hidden" />
-          <button class="rounded-md bg-blue-500 text-white px-3 py-1" @click="showNoteModal = true">新增笔记</button>
-          <button class="rounded-md bg-purple-500 text-white px-3 py-1" @click="router.push({name:'notes'})">笔记管理</button>
-          <button class="rounded-md bg-gray-100 px-3 py-1" @click="router.push({name:'settings'})">OCR 配置</button>
-          <button class="rounded-md bg-gray-100 px-3 py-1" @click="router.push({name:'home'})">返回首页</button>
-        </div>
       </div>
 
       <!-- 搜索和过滤栏 -->
-      <div class="mb-4 bg-white rounded-lg p-4 border">
+      <div class="mb-4 card p-4">
         <div class="flex gap-4">
           <!-- 搜索框 -->
           <div class="flex-1">
@@ -335,14 +348,14 @@ onMounted(load)
               v-model="searchQuery"
               type="text"
               placeholder="搜索文件名..."
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="input-field"
             />
           </div>
           <!-- 状态过滤器 -->
           <div class="w-48">
             <select
               v-model="statusFilter"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="input-select"
             >
               <option value="all">全部状态</option>
               <option value="pending">等待处理</option>
@@ -358,75 +371,70 @@ onMounted(load)
       <!-- 拖放提示区域 -->
       <div 
         v-if="isDragging" 
-        class="fixed inset-0 bg-blue-50 bg-opacity-90 z-50 flex items-center justify-center pointer-events-none"
+        class="fixed inset-0 bg-indigo-50 bg-opacity-90 z-50 flex items-center justify-center pointer-events-none"
       >
-        <div class="bg-white rounded-lg shadow-xl p-8 text-center">
+        <div class="card shadow-xl p-8 text-center drag-over">
           <div class="text-6xl mb-4">📄</div>
           <h3 class="text-xl font-semibold mb-2">拖放文件到这里上传</h3>
           <p class="text-gray-600">支持 PDF 文件，最大 100MB</p>
         </div>
       </div>
 
-      <div class="bg-white border rounded-xl shadow-sm overflow-hidden">
+      <div class="card table-container">
         <table class="w-full">
-          <thead class="bg-gray-50 text-left text-sm text-gray-600">
+          <thead class="table-header">
             <tr>
-              <th class="p-3 w-70">文件名</th>
-              <th class="p-3 w-24">页数</th>
-              <th class="p-3 w-30">上传时间</th>
-              <th class="p-3 w-30">识别</th>
-              <th class="p-3 w-50">校对</th>
-              <th class="p-3 w-68">操作</th>
+              <th class="table-cell">文件名</th>
+              <th class="table-cell w-24">页数</th>
+              <th class="table-cell w-40">上传时间</th>
+              <th class="table-cell w-24">识别</th>
+              <th class="table-cell w-24">校对</th>
+              <th class="table-cell w-48">操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loading" class="text-center">
-              <td colspan="6" class="p-6 text-gray-500">加载中...</td>
+              <td colspan="6" class="table-cell text-gray-500">加载中...</td>
             </tr>
             <tr v-else-if="error" class="text-center">
-              <td colspan="6" class="p-6 text-red-500">{{ error }}</td>
+              <td colspan="6" class="table-cell text-red-500">{{ error }}</td>
             </tr>
-            <tr v-for="f in filteredFiles" :key="f.id" class="border-t hover:bg-gray-50 transition-colors">
-              <td class="p-3">
+            <tr v-for="f in filteredFiles" :key="f.id" class="table-row">
+              <td class="table-cell">
                 <div class="font-medium">{{ f.original_filename }}</div>
-                <div class="text-xs text-gray-500">
-                  状态: {{ getStatusText(f.status) }}
+                <div class="mt-1">
+                  <span :class="['badge', getStatusBadgeClass(f.status)]">{{ getStatusText(f.status) }}</span>
                 </div>
-                <div v-if="f.error_message" class="text-xs text-red-500 mt-1">
+                <div v-if="f.error_message" class="text-xs text-red-500 mt-2">
                   {{ f.error_message }}
                 </div>
               </td>
-              <td class="p-3 text-sm">{{ f.total_pages || '-' }}</td>
-              <td class="p-3 text-sm">{{ formatDate(f.created_at) }}</td>
-              <td class="p-3">
-                <div class="mt-1 text-xs">{{ getProgress(f) }}%</div>
-              </td>
-              <td class="p-3">
-                <div class="mt-1 text-xs">0%</div>
-              </td>
-              <td class="p-3">
-                <div class="flex items-center gap-2 flex-wrap">
-                  <button class="rounded-md bg-blue-400 text-white px-2 py-1 text-sm hover:bg-blue-500 transition-colors flex items-center gap-1" @click="previewFile(f.id)">
+              <td class="table-cell text-sm">{{ f.total_pages || '-' }}</td>
+              <td class="table-cell text-sm">{{ formatDate(f.created_at) }}</td>
+              <td class="table-cell text-sm">{{ getProgress(f) }}%</td>
+              <td class="table-cell text-sm">0%</td>
+              <td class="table-cell">
+                <div class="flex items-center gap-2">
+                  <button class="btn-secondary px-2 py-1" @click="previewFile(f.id)" title="预览">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </button>
-                  <button class="rounded-md bg-indigo-600 text-white px-2 py-1 text-sm hover:bg-indigo-700 transition-colors flex items-center gap-1" @click="goWorkspace(f.id)">
+                  <button class="btn-primary px-2 py-1" @click="goWorkspace(f.id)" title="编辑">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.536L16.732 3.732z" />
                     </svg>
                   </button>
-                  <button class="rounded-md bg-red-100 px-2 py-1 text-sm hover:bg-red-200 transition-colors flex items-center gap-1" @click="del(f.id)">
+                  <button class="btn-danger px-2 py-1" @click="del(f.id)" title="删除">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                       <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                   </button>
-                  <!--  -->
                 </div>
               </td>
             </tr>
             <tr v-if="!filteredFiles.length">
-              <td colspan="6" class="p-6 text-center text-gray-500">暂无文件，请先上传 PDF</td>
+              <td colspan="6" class="table-cell text-center text-gray-500">暂无文件，请先上传 PDF</td>
             </tr>
           </tbody>
         </table>
@@ -435,28 +443,28 @@ onMounted(load)
   </div>
 
   <!-- 笔记弹窗 -->
-  <div v-if="showNoteModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-96">
+  <div v-if="showNoteModal" class="modal-overlay">
+    <div class="modal-content">
       <h3 class="text-lg font-medium mb-4">新增笔记</h3>
       <input
         v-model="noteTitle"
         type="text"
         placeholder="请输入笔记标题"
-        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+        class="input-field mb-4"
         @keyup.enter="createNote"
         ref="noteTitleInput"
       />
-      <div class="flex justify-end space-x-2">
+      <div class="flex justify-end gap-2">
         <button
           @click="showNoteModal = false; noteTitle = ''"
-          class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+          class="btn-secondary"
         >
           取消
         </button>
         <button
           @click="createNote"
           :disabled="noteSubmitting || !noteTitle.trim()"
-          class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300"
+          class="btn-primary"
         >
           {{ noteSubmitting ? '创建中...' : '创建' }}
         </button>

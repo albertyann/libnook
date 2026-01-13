@@ -57,13 +57,13 @@ async function exportToFile() {
     URL.revokeObjectURL(url)
 
     // 显示成功提示
-    if (this.$toast) {
-      this.$toast.success('文件导出成功！', 3000, '导出完成')
+    if (window.toastManager) {
+      window.toastManager.show({ message: '文件导出成功！', type: 'success', duration: 3000, title: '导出完成' })
     }
   } catch (error) {
     console.error('导出失败:', error)
-    if (this.$toast) {
-      this.$toast.error('导出失败，请稍后重试', 3000, '导出错误')
+    if (window.toastManager) {
+      window.toastManager.show({ message: '导出失败，请稍后重试', type: 'error', duration: 3000, title: '导出错误' })
     }
   }
 }
@@ -99,13 +99,13 @@ async function exportToMarkdown() {
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
 
-    if (this.$toast) {
-      this.$toast.success('Markdown 文件导出成功！', 3000, '导出完成')
+    if (window.toastManager) {
+      window.toastManager.show({ message: 'Markdown 文件导出成功！', type: 'success', duration: 3000, title: '导出完成' })
     }
   } catch (error) {
     console.error('导出失败:', error)
-    if (this.$toast) {
-      this.$toast.error('导出失败，请稍后重试', 3000, '导出错误')
+    if (window.toastManager) {
+      window.toastManager.show({ message: '导出失败，请稍后重试', type: 'error', duration: 3000, title: '导出错误' })
     }
   }
 }
@@ -201,9 +201,9 @@ async function loadPdfData() {
 
   try {
     const response = await Api.info(fileId.value)
-    if (response.status == 'success') {
-      throw new Error('Failed to fetch PDF data')
-    }
+    // if (response.status && response.status !== 'success') {
+    //   throw new Error('Failed to fetch PDF data')
+    // }
 
     const data = response
     pdfData.value = data

@@ -84,7 +84,7 @@ function chooseFile() {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 flex items-center justify-center px-6">
+  <div class="page-container flex items-center justify-center px-6">
     <div class="max-w-2xl w-full">
       <div class="text-center">
         <div class="mx-auto mb-6 h-14 w-14 rounded-2xl bg-indigo-100 flex items-center justify-center">
@@ -95,19 +95,19 @@ function chooseFile() {
         </div>
         <h1 class="text-3xl font-bold text-gray-900">PDF 文字识别</h1>
         <p class="mt-2 text-gray-600">上传PDF文件，AI自动提取其中的文字内容</p>
-        <span class="mt-3 inline-flex items-center px-3 py-1 rounded-full text-sm bg-indigo-50 text-indigo-600">AI智能识别</span>
-        <div class="mt-2 flex gap-4 justify-center">
-          <button class="text-sm text-indigo-600 hover:underline" @click="router.push({name:'files'})">进入文件管理</button>
-          <button class="text-sm text-indigo-600 hover:underline" @click="router.push({name:'settings'})">OCR 配置</button>
+        <span class="mt-3 badge badge-info">AI智能识别</span>
+        <div class="mt-4 flex gap-4 justify-center">
+          <button class="text-sm text-indigo-600 hover:underline font-medium" @click="router.push({name:'files'})">进入文件管理</button>
+          <button class="text-sm text-indigo-600 hover:underline font-medium" @click="router.push({name:'settings'})">OCR 配置</button>
         </div>
       </div>
 
       <div
-        class="mt-8 rounded-2xl border-2 border-dashed bg-white p-10 text-center transition-colors"
+        class="mt-8 card p-10 text-center transition-colors border-2 border-dashed"
         @dragover="onDragOver"
         @dragleave="onDragLeave"
         @drop="onDrop"
-        :class="{ 'opacity-70 cursor-not-allowed': isProcessing }"
+        :class="{ 'opacity-70 cursor-not-allowed': isProcessing, 'drag-over': isDragging }"
       >
         <input ref="fileInput" id="file" type="file" class="hidden" accept="application/pdf" @change="onFileChange" />
         
@@ -119,7 +119,7 @@ function chooseFile() {
               <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
           </div>
-          <p class="text-gray-700">{{ processingStatus }}</p>
+          <p class="text-gray-700 font-medium">{{ processingStatus }}</p>
           <p class="text-sm text-gray-500">请稍候，正在处理您的PDF文件...</p>
         </div>
         
@@ -131,10 +131,10 @@ function chooseFile() {
               <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
             </svg>
           </div>
-          <p class="text-gray-700">拖拽PDF文件到这里</p>
+          <p class="text-gray-700 font-medium">拖拽PDF文件到这里</p>
           <p class="mt-1 text-sm text-gray-500">或点击选择文件</p>
-          <div class="mt-4">
-            <button class="inline-flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-white" @click="chooseFile">
+          <div class="mt-6">
+            <button class="btn-primary inline-flex items-center gap-2" @click="chooseFile">
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="h-5 w-5">
                 <path d="M12 16a1 1 0 0 1-1-1V8.41l-1.3 1.29a1 1 0 1 1-1.4-1.42l3-3a1 1 0 0 1 1.4 0l3 3a1 1 0 1 1-1.4 1.42L13 8.41V15a1 1 0 0 1-1 1Z"/>
               </svg>

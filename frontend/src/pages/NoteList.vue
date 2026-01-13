@@ -130,81 +130,81 @@ function getContentPreview(content, maxLength = 100) {
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 p-6">
+  <div class="page-container p-6">
     <div class="max-w-6xl mx-auto">
-      <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-semibold">笔记管理</h1>
+      <div class="page-header">
+        <h1 class="page-title">笔记管理</h1>
         <div class="flex items-center space-x-4">
           <div v-if="total > 0" class="text-sm text-gray-500">
             共 {{ total }} 个笔记
           </div>
           <button
             @click="showCreateModal = true"
-            class="bg-blue-500 text-white rounded-md px-4 py-2 hover:bg-blue-600"
+            class="btn-primary"
           >
             新增笔记
           </button>
           <button
             @click="router.push({name:'files'})"
-            class="bg-gray-100 text-gray-700 rounded-md px-4 py-2 hover:bg-gray-200"
+            class="btn-secondary"
           >
             返回文件管理
           </button>
         </div>
       </div>
 
-      <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+      <div class="card table-container">
         <table class="w-full">
-          <thead class="bg-gray-50 text-left text-sm text-gray-600">
+          <thead class="table-header">
             <tr>
-              <th class="p-4 w-1/3">标题</th>
-              <th class="p-4 w-2/5">内容预览</th>
-              <th class="p-4 w-1/6">创建时间</th>
-              <th class="p-4 w-1/6">更新时间</th>
-              <th class="p-4 w-1/6">操作</th>
+              <th class="table-cell w-1/3">标题</th>
+              <th class="table-cell w-2/5">内容预览</th>
+              <th class="table-cell w-1/6">创建时间</th>
+              <th class="table-cell w-1/6">更新时间</th>
+              <th class="table-cell w-1/6">操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="loading" class="text-center">
-              <td colspan="5" class="p-8 text-gray-500">加载中...</td>
+              <td colspan="5" class="table-cell text-gray-500">加载中...</td>
             </tr>
             <tr v-else-if="error" class="text-center">
-              <td colspan="5" class="p-8 text-red-500">{{ error }}</td>
+              <td colspan="5" class="table-cell text-red-500">{{ error }}</td>
             </tr>
             <tr v-else-if="notes.length === 0" class="text-center">
-              <td colspan="5" class="p-8 text-gray-500">暂无笔记，请创建一个新笔记</td>
+              <td colspan="5" class="table-cell text-gray-500">暂无笔记，请创建一个新笔记</td>
             </tr>
             <tr 
               v-for="note in notes" 
               :key="note.id" 
-              class="border-t hover:bg-gray-50 transition-colors cursor-pointer"
+              class="table-row cursor-pointer"
               @click="goToNote(note.id)"
             >
-              <td class="p-4">
+              <td class="table-cell">
                 <div class="font-medium text-gray-900">{{ note.title }}</div>
               </td>
-              <td class="p-4">
-                <div class="text-sm text-gray-600 line-clamp-2">
+              <td class="table-cell">
+                <div class="text-sm text-gray-600">
                   {{ getContentPreview(note.content) }}
                 </div>
               </td>
-              <td class="p-4 text-sm text-gray-500">
+              <td class="table-cell text-sm text-gray-500">
                 {{ formatDate(note.created_at) }}
               </td>
-              <td class="p-4 text-sm text-gray-500">
+              <td class="table-cell text-sm text-gray-500">
                 {{ formatDate(note.updated_at) }}
               </td>
-              <td class="p-4">
+              <td class="table-cell">
                 <div class="flex items-center gap-2">
                   <button
                     @click.stop="goToNote(note.id)"
-                    class="bg-blue-100 text-blue-700 rounded-md px-3 py-1 text-sm hover:bg-blue-200 transition-colors"
+                    class="btn-primary px-3 py-1 text-xs"
                   >
                     编辑
                   </button>
                   <button
                     @click.stop="deleteNote(note)"
-                    class="bg-red-100 text-red-700 rounded-md px-3 py-1 text-sm hover:bg-red-200 transition-colors"
+                    class="btn-danger px-3 py-1 text-xs"
                   >
                     删除
                   </button>
@@ -217,28 +217,28 @@ function getContentPreview(content, maxLength = 100) {
     </div>
 
     <!-- 创建笔记弹窗 -->
-    <div v-if="showCreateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg p-6 w-96">
+    <div v-if="showCreateModal" class="modal-overlay">
+      <div class="modal-content max-w-md">
         <h3 class="text-lg font-medium mb-4">新增笔记</h3>
         <input
           v-model="noteTitle"
           type="text"
           placeholder="请输入笔记标题"
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+          class="input-field mb-4"
           @keyup.enter="createNote"
           ref="noteTitleInput"
         />
         <div class="flex justify-end space-x-2">
           <button
             @click="showCreateModal = false; noteTitle = ''"
-            class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+            class="btn-secondary"
           >
             取消
           </button>
           <button
             @click="createNote"
             :disabled="noteSubmitting || !noteTitle.trim()"
-            class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300"
+            class="btn-primary"
           >
             {{ noteSubmitting ? '创建中...' : '创建' }}
           </button>
@@ -248,11 +248,3 @@ function getContentPreview(content, maxLength = 100) {
   </div>
 </template>
 
-<style scoped>
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-</style>

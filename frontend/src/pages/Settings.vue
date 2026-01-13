@@ -124,20 +124,20 @@ onMounted(loadConfigs)
 </script>
 
 <template>
-  <div class="min-h-screen bg-gray-50 p-6">
+  <div class="page-container p-6">
     <div class="max-w-4xl mx-auto">
       <!-- 头部导航 -->
-      <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold text-gray-900">OCR 配置管理</h1>
-        <div class="space-x-2">
+      <div class="page-header">
+        <h1 class="page-title">OCR 配置管理</h1>
+        <div class="flex gap-2">
           <button 
-            class="rounded-md bg-indigo-600 text-white px-4 py-2 text-sm hover:bg-indigo-700 transition-colors"
+            class="btn-primary"
             @click="openAddDialog"
           >
             添加配置
           </button>
           <button 
-            class="rounded-md bg-gray-100 px-4 py-2 text-sm hover:bg-gray-200 transition-colors"
+            class="btn-secondary"
             @click="goHome"
           >
             返回首页
@@ -146,56 +146,56 @@ onMounted(loadConfigs)
       </div>
 
       <!-- 错误提示 -->
-      <div v-if="errorMessage" class="mb-4 p-3 bg-red-50 text-red-600 rounded-lg">
+      <div v-if="errorMessage" class="mb-4 p-3 bg-red-50 text-red-600 rounded-lg border border-red-200">
         {{ errorMessage }}
       </div>
 
       <!-- 配置列表 -->
-      <div class="bg-white border rounded-xl shadow-sm overflow-hidden mb-6">
+      <div class="card table-container mb-6">
         <table class="w-full">
-          <thead class="bg-gray-50 text-left text-sm text-gray-600">
+          <thead class="table-header">
             <tr>
-              <th class="p-4">配置名称</th>
-              <th class="p-4">API地址</th>
-              <th class="p-4">状态</th>
-              <th class="p-4 w-64">操作</th>
+              <th class="table-cell">配置名称</th>
+              <th class="table-cell">API地址</th>
+              <th class="table-cell w-24">状态</th>
+              <th class="table-cell w-48">操作</th>
             </tr>
           </thead>
           <tbody>
-            <tr v-for="config in configs" :key="config.id" class="border-t hover:bg-gray-50 transition-colors">
-              <td class="p-4 text-sm font-medium">{{ config.name }}</td>
-              <td class="p-4 text-sm text-gray-600 break-all max-w-xs">{{ config.apiUrl }}</td>
-              <td class="p-4">
+            <tr v-for="config in configs" :key="config.id" class="table-row">
+              <td class="table-cell font-medium">{{ config.name }}</td>
+              <td class="table-cell text-gray-600 break-all max-w-xs">{{ config.apiUrl }}</td>
+              <td class="table-cell">
                 <span 
                   v-if="config.isActive" 
-                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+                  class="badge badge-success"
                 >
                   已激活
                 </span>
                 <span 
                   v-else 
-                  class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"
+                  class="badge badge-gray"
                 >
                   未激活
                 </span>
               </td>
-              <td class="p-4">
+              <td class="table-cell">
                 <div class="flex items-center gap-2">
                   <button 
                     v-if="!config.isActive"
-                    class="rounded-md bg-green-600 text-white px-3 py-1 text-xs hover:bg-green-700 transition-colors"
+                    class="btn-success px-3 py-1 text-xs"
                     @click="setActive(config.id)"
                   >
                     激活
                   </button>
                   <button 
-                    class="rounded-md bg-blue-600 text-white px-3 py-1 text-xs hover:bg-blue-700 transition-colors"
+                    class="btn-primary px-3 py-1 text-xs"
                     @click="openEditDialog(config)"
                   >
                     编辑
                   </button>
                   <button 
-                    class="rounded-md bg-red-600 text-white px-3 py-1 text-xs hover:bg-red-700 transition-colors"
+                    class="btn-danger px-3 py-1 text-xs"
                     @click="deleteConfig(config.id)"
                   >
                     删除
@@ -204,7 +204,7 @@ onMounted(loadConfigs)
               </td>
             </tr>
             <tr v-if="!configs.length">
-              <td colspan="4" class="p-6 text-center text-gray-500">暂无配置</td>
+              <td colspan="4" class="table-cell text-center text-gray-500">暂无配置</td>
             </tr>
           </tbody>
         </table>
@@ -223,8 +223,8 @@ onMounted(loadConfigs)
     </div>
 
     <!-- 添加配置对话框 -->
-    <div v-if="showAddDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+    <div v-if="showAddDialog" class="modal-overlay p-4">
+      <div class="modal-content max-w-md">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">添加OCR配置</h2>
         
         <div class="space-y-4">
@@ -233,7 +233,7 @@ onMounted(loadConfigs)
             <input 
               v-model="formData.name"
               type="text" 
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              class="input-field"
               placeholder="请输入配置名称"
             >
           </div>
@@ -243,7 +243,7 @@ onMounted(loadConfigs)
             <input 
               v-model="formData.apiUrl"
               type="url" 
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              class="input-field"
               placeholder="https://api.example.com/ocr"
             >
           </div>
@@ -253,21 +253,21 @@ onMounted(loadConfigs)
             <input 
               v-model="formData.apiKey"
               type="text" 
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              class="input-field"
               placeholder="请输入API密钥（可选）"
             >
           </div>
         </div>
         
-        <div class="flex justify-end gap-3 mt-6">
+        <div class="flex justify-end gap-2 mt-6">
           <button 
-            class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+            class="btn-secondary"
             @click="showAddDialog = false"
           >
             取消
           </button>
           <button 
-            class="px-4 py-2 bg-indigo-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-indigo-700"
+            class="btn-primary"
             @click="submitAddConfig"
           >
             添加
@@ -277,8 +277,8 @@ onMounted(loadConfigs)
     </div>
 
     <!-- 编辑配置对话框 -->
-    <div v-if="showEditDialog" class="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+    <div v-if="showEditDialog" class="modal-overlay p-4">
+      <div class="modal-content max-w-md">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">编辑OCR配置</h2>
         
         <div class="space-y-4">
@@ -287,7 +287,7 @@ onMounted(loadConfigs)
             <input 
               v-model="formData.name"
               type="text" 
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              class="input-field"
               placeholder="请输入配置名称"
             >
           </div>
@@ -297,7 +297,7 @@ onMounted(loadConfigs)
             <input 
               v-model="formData.apiUrl"
               type="url" 
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              class="input-field"
               placeholder="https://api.example.com/ocr"
             >
           </div>
@@ -307,21 +307,21 @@ onMounted(loadConfigs)
             <input 
               v-model="formData.apiKey"
               type="text" 
-              class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              class="input-field"
               placeholder="请输入API密钥（可选）"
             >
           </div>
         </div>
         
-        <div class="flex justify-end gap-3 mt-6">
+        <div class="flex justify-end gap-2 mt-6">
           <button 
-            class="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+            class="btn-secondary"
             @click="showEditDialog = false"
           >
             取消
           </button>
           <button 
-            class="px-4 py-2 bg-indigo-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-indigo-700"
+            class="btn-primary"
             @click="submitUpdateConfig"
           >
             保存

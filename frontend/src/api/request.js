@@ -19,7 +19,7 @@ service.interceptors.request.use(
 
 const state = {
     401: function LoadToLogin() {
-        window.location.pathname = '/w/login' // 重定向404页面
+        window.location.href = '/login' // 重定向登录页面
     }
 }
 

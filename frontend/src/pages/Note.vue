@@ -171,13 +171,13 @@ async function exportNoteToText() {
     URL.revokeObjectURL(url)
 
     // 显示成功提示
-    if (this.$toast) {
-      this.$toast.success('笔记导出成功！', 3000, '导出完成')
+    if (window.toastManager) {
+      window.toastManager.show({ message: '笔记导出成功！', type: 'success', duration: 3000, title: '导出完成' })
     }
   } catch (error) {
     console.error('导出失败:', error)
-    if (this.$toast) {
-      this.$toast.error('导出失败，请稍后重试', 3000, '导出错误')
+    if (window.toastManager) {
+      window.toastManager.show({ message: '导出失败，请稍后重试', type: 'error', duration: 3000, title: '导出错误' })
     }
   }
 }
@@ -203,13 +203,13 @@ async function exportNoteToMarkdown() {
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
 
-    if (this.$toast) {
-      this.$toast.success('Markdown 文件导出成功！', 3000, '导出完成')
+    if (window.toastManager) {
+      window.toastManager.show({ message: 'Markdown 文件导出成功！', type: 'success', duration: 3000, title: '导出完成' })
     }
   } catch (error) {
     console.error('导出失败:', error)
-    if (this.$toast) {
-      this.$toast.error('导出失败，请稍后重试', 3000, '导出错误')
+    if (window.toastManager) {
+      window.toastManager.show({ message: '导出失败，请稍后重试', type: 'error', duration: 3000, title: '导出错误' })
     }
   }
 }
@@ -252,13 +252,13 @@ ${noteContent.value.replace(/\n/g, '<br/>')}
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
 
-    if (this.$toast) {
-      this.$toast.success('Word 文档导出成功！', 3000, '导出完成')
+    if (window.toastManager) {
+      window.toastManager.show({ message: 'Word 文档导出成功！', type: 'success', duration: 3000, title: '导出完成' })
     }
   } catch (error) {
     console.error('导出失败:', error)
-    if (this.$toast) {
-      this.$toast.error('导出失败，请稍后重试', 3000, '导出错误')
+    if (window.toastManager) {
+      window.toastManager.show({ message: '导出失败，请稍后重试', type: 'error', duration: 3000, title: '导出错误' })
     }
   }
 }
@@ -276,13 +276,13 @@ async function saveNote() {
       content: noteContent.value
     })
 
-    if (this.$toast) {
-      this.$toast.success('笔记保存成功！', 3000, '保存完成')
+    if (window.toastManager) {
+      window.toastManager.show({ message: '笔记保存成功！', type: 'success', duration: 3000, title: '保存完成' })
     }
   } catch (err) {
     console.error('Error saving note:', err)
-    if (this.$toast) {
-      this.$toast.error('保存笔记失败，请稍后重试', 3000, '保存错误')
+    if (window.toastManager) {
+      window.toastManager.show({ message: '保存笔记失败，请稍后重试', type: 'error', duration: 3000, title: '保存错误' })
     }
   } finally {
     saving.value = false
@@ -324,8 +324,8 @@ function restoreToVersion(versionId) {
     loadVersionHistory()
     showVersionHistory.value = false
 
-    if (this.$toast) {
-      this.$toast.success('版本已恢复！', 3000, '恢复完成')
+    if (window.toastManager) {
+      window.toastManager.show({ message: '版本已恢复！', type: 'success', duration: 3000, title: '恢复完成' })
     }
   }
 }
@@ -338,8 +338,8 @@ function deleteVersion(versionId) {
     versionHistory.deleteVersion('note', selectedNote.value.id, versionId)
     loadVersionHistory()
 
-    if (this.$toast) {
-      this.$toast.info('版本已删除', 3000, '删除完成')
+    if (window.toastManager) {
+      window.toastManager.show({ message: '版本已删除', type: 'info', duration: 3000, title: '删除完成' })
     }
   }
 }
@@ -494,7 +494,7 @@ function selectWorkResult(result) {
           <h2 class="text-lg font-medium text-gray-900">我的笔记</h2>
           <button
             @click="showCreateModal = true"
-            class="bg-blue-500 text-white rounded-md px-3 py-1 text-sm hover:bg-blue-600"
+            class="btn-primary px-3 py-1 text-sm"
           >
             新增
           </button>
@@ -504,7 +504,7 @@ function selectWorkResult(result) {
           v-model="searchQuery"
           type="text"
           placeholder="搜索笔记..."
-          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          class="input-field"
         />
       </div>
 
@@ -524,7 +524,7 @@ function selectWorkResult(result) {
             @click="selectNote(note)"
             :class="[
               'p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50',
-              selectedNote && selectedNote.id === note.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
+              selectedNote && selectedNote.id === note.id ? 'bg-indigo-50 border-l-4 border-l-indigo-500' : ''
             ]"
           >
             <h3 class="font-medium text-gray-900 truncate">{{ note.title }}</h3>
@@ -536,7 +536,7 @@ function selectWorkResult(result) {
       <div class="p-4 border-t border-gray-200">
         <button
           @click="router.push({name:'files'})"
-          class="w-full bg-gray-100 text-gray-700 rounded-md px-3 py-2 text-sm hover:bg-gray-200"
+          class="w-full btn-secondary text-sm"
         >
           返回文件管理
         </button>
@@ -561,7 +561,7 @@ function selectWorkResult(result) {
               <!-- 版本历史按钮 -->
               <button
                 @click="showVersions"
-                class="bg-gray-100 text-gray-700 rounded-md px-3 py-1 text-sm hover:bg-gray-200"
+                class="btn-secondary text-sm"
               >
                 版本历史 ({{ versions.length }})
               </button>
@@ -569,7 +569,7 @@ function selectWorkResult(result) {
               <!-- 导出按钮 -->
               <div class="relative">
                 <button
-                  class="bg-gray-100 text-gray-700 rounded-md px-3 py-1 text-sm hover:bg-gray-200"
+                  class="btn-secondary text-sm"
                   @click="showExportMenu = !showExportMenu"
                 >
                   导出
@@ -609,13 +609,13 @@ function selectWorkResult(result) {
               <button
                 @click="saveNote"
                 :disabled="saving"
-                class="bg-green-500 text-white rounded-md px-3 py-1 text-sm hover:bg-green-600 disabled:bg-green-300"
+                class="btn-success text-sm"
               >
                 {{ saving ? '保存中...' : '保存' }}
               </button>
               <button
                 @click="deleteNote"
-                class="bg-red-500 text-white rounded-md px-3 py-1 text-sm hover:bg-red-600"
+                class="btn-danger text-sm"
               >
                 删除
               </button>
@@ -642,7 +642,7 @@ function selectWorkResult(result) {
                 :class="[
                   'max-w-xs px-4 py-2 rounded-lg',
                   message.role === 'user' 
-                    ? 'bg-blue-500 text-white' 
+                    ? 'bg-indigo-600 text-white' 
                     : 'bg-gray-200 text-gray-800'
                 ]"
               >
@@ -659,14 +659,14 @@ function selectWorkResult(result) {
               v-model="chatInput"
               type="text"
               placeholder="输入您的问题..."
-              class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="input-field flex-1"
               @keyup.enter="sendMessage"
               :disabled="chatSending"
             />
             <button
               @click="sendMessage"
               :disabled="chatSending || !chatInput.trim()"
-              class="bg-blue-500 text-white rounded-md px-4 py-2 hover:bg-blue-600 disabled:bg-blue-300"
+              class="btn-primary"
             >
               {{ chatSending ? '发送中...' : '发送' }}
             </button>
@@ -682,27 +682,27 @@ function selectWorkResult(result) {
       </div>
       
       <div class="flex-1 overflow-y-auto">
-        <div v-if="!selectedNote" class="p-4 text-center text-gray-500">
-          请先选择笔记
-        </div>
-        
-        <div v-else-if="workResults.length === 0" class="p-4 text-center text-gray-500">
-          暂无工作结果
-        </div>
-        
-        <div v-else>
-          <div
-            v-for="result in workResults"
-            :key="result.id"
-            @click="selectWorkResult(result)"
-            :class="[
-              'p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50',
-              selectedWorkResult && selectedWorkResult.id === result.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-            ]"
-          >
-            <h3 class="font-medium text-gray-900 truncate">{{ result.title }}</h3>
-            <p class="text-sm text-gray-500 mt-1">{{ result.created_at || '创建时间' }}</p>
-            <p class="text-sm text-gray-600 mt-2 line-clamp-2">{{ result.summary }}</p>
+      <div v-if="!selectedNote" class="p-4 text-center text-gray-500">
+        请先选择笔记
+      </div>
+      
+      <div v-else-if="workResults.length === 0" class="p-4 text-center text-gray-500">
+        暂无工作结果
+      </div>
+      
+      <div v-else>
+        <div
+          v-for="result in workResults"
+          :key="result.id"
+          @click="selectWorkResult(result)"
+          :class="[
+            'p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50',
+            selectedWorkResult && selectedWorkResult.id === result.id ? 'bg-indigo-50 border-l-4 border-l-indigo-500' : ''
+          ]"
+        >
+          <h3 class="font-medium text-gray-900 truncate">{{ result.title }}</h3>
+          <p class="text-sm text-gray-500 mt-1">{{ result.created_at || '创建时间' }}</p>
+          <p class="text-sm text-gray-600 mt-2">{{ result.summary }}</p>
           </div>
         </div>
       </div>
@@ -717,28 +717,28 @@ function selectWorkResult(result) {
   </div>
   
   <!-- 创建笔记弹窗 -->
-  <div v-if="showCreateModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-    <div class="bg-white rounded-lg p-6 w-96">
+  <div v-if="showCreateModal" class="modal-overlay">
+    <div class="modal-content max-w-md">
       <h3 class="text-lg font-medium mb-4">新增笔记</h3>
       <input
         v-model="noteTitle"
         type="text"
         placeholder="请输入笔记标题"
-        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 mb-4"
+        class="input-field mb-4"
         @keyup.enter="createNote"
         ref="noteTitleInput"
       />
       <div class="flex justify-end space-x-2">
         <button
           @click="showCreateModal = false; noteTitle = ''"
-          class="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+          class="btn-secondary"
         >
           取消
         </button>
         <button
           @click="createNote"
           :disabled="saving || !noteTitle.trim()"
-          class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-blue-300"
+          class="btn-primary"
         >
           {{ saving ? '创建中...' : '创建' }}
         </button>
