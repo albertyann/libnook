@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ÉLYSÉE | Luxury Redefined</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Cormorant+Garamond:wght@300;400;500;600&family=Lato:wght@300;400;500&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --gold: #c9a962;
+            --gold-light: #e8d5a3;
+            --black: #0a0a0a;
+            --dark-gray: #1a1a1a;
+            --charcoal: #2d2d2d;
+            --cream: #faf8f5;
+            --white: #ffffff;
+            --glass-bg: rgba(255, 255, 255, 0.08);
+            --glass-border: rgba(255, 255, 255, 0.15);
+        }
+
+        body {
+            font-family: 'Lato', sans-serif;
+            background: var(--black);
+            color: var(--cream);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        .font-playfair {
+            font-family: 'Playfair Display', serif;
+        }
+
+        .font-cormorant {
+            font-family: 'Cormorant Garamond', serif;
+        }
+
+        .gradient-overlay {
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #2d2d2d 100%);
+        }
+
+        .gold-gradient {
+            background: linear-gradient(135deg, #c9a962 0%, #e8d5a3 50%, #c9a962 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .liquid-glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        .nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            padding: 1.5rem 4rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .nav.scrolled {
+            background: rgba(10, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.8rem;
+            font-weight: 600;
+            letter-spacing: 0.3em;
+            color: var(--white);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 3rem;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--cream);
+            text-decoration: none;
+            font-size: 0.85rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            transition: color 0.3s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--gold);
+        }
+
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(10, 10, 10, 0.9), rgba(26, 26, 26, 0.8)),
+                        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" style="stop-color:%23c9a962;stop-opacity:0.1"/><stop offset="100%" style="stop-color:%23e8d5a3;stop-opacity:0.05"/></linearGradient></defs><circle cx="50" cy="50" r="40" fill="url(%23grad)"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+
+        .hero-content {
+            text-align: center;
+            z-index: 1;
+            max-width: 900px;
+            padding: 2rem;
+        }
+
+        .hero-subtitle {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.4rem;
+            letter-spacing: 0.4em;
+            color: var(--gold);
+            margin-bottom: 1.5rem;
+        }
+
+        .hero-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 5rem;
+            font-weight: 600;
+            line-height: 1.1;
+            margin-bottom: 2rem;
+            color: var(--white);
+        }
+
+        .hero-description {
+            font-size: 1.1rem;
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 3rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .cta-btn {
+            display: inline-block;
+            padding: 1rem 3rem;
+            background: transparent;
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            text-decoration: none;
+            font-size: 0.9rem;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            transition: all 0.3s ease;
+        }
+
+        .cta-btn:hover {
+            background: var(--gold);
+            color: var(--black);
+        }
+
+        .cta-btn-primary {
+            background: var(--gold);
+            color: var(--black);
+            padding: 1rem 4rem;
+        }
+
+        .cta-btn-primary:hover {
+            background: var(--gold-light);
+            color: var(--black);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 30px rgba(201, 169, 98, 0.3);
+        }
+
+        .section {
+            padding: 8rem 4rem;
+            position: relative;
+        }
+
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 3rem;
+            font-weight: 500;
+            text-align: center;
+            margin-bottom: 1rem;
+            color: var(--white);
+        }
+
+        .section-subtitle {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.3rem;
+            text-align: center;
+            color: var(--gold);
+            letter-spacing: 0.3em;
+            margin-bottom: 5rem;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .product-card {
+            liquid-glass;
+            padding: 2rem;
+            transition: all 0.4s ease;
+            cursor: pointer;
+        }
+
+        .product-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+        }
+
+        .product-image {
+            width: 100%;
+            height: 400px;
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .product-image::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at center, rgba(201, 169, 98, 0.2) 0%, transparent 70%);
+        }
+
+        .product-name {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.4rem;
+            color: var(--white);
+            margin-bottom: 0.5rem;
+        }
+
+        .product-category {
+            font-size: 0.8rem;
+            color: var(--gold);
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+        }
+
+        .product-price {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.6rem;
+            color: var(--white);
+        }
+
+        .storytelling {
+            background: linear-gradient(180deg, var(--black) 0%, var(--dark-gray) 50%, var(--black) 100%);
+        }
+
+        .story-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6rem;
+            align-items: center;
+        }
+
+        .story-image {
+            width: 100%;
+            height: 600px;
+            background: linear-gradient(135deg, rgba(201, 169, 98, 0.1), rgba(26, 26, 26, 0.3));
+            position: relative;
+        }
+
+        .story-content h3 {
+            font-family: 'Playfair Display', serif;
+            font-size: 2.5rem;
+            color: var(--gold);
+            margin-bottom: 2rem;
+        }
+
+        .story-content p {
+            font-size: 1.05rem;
+            line-height: 2;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 1.5rem;
+        }
+
+        .values-section {
+            background: var(--dark-gray);
+        }
+
+        .values-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 3rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .value-card {
+            text-align: center;
+            padding: 3rem 2rem;
+        }
+
+        .value-icon {
+            font-size: 3rem;
+            color: var(--gold);
+            margin-bottom: 2rem;
+        }
+
+        .value-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.5rem;
+            color: var(--white);
+            margin-bottom: 1rem;
+        }
+
+        .value-description {
+            font-size: 0.95rem;
+            line-height: 1.8;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .membership-section {
+            min-height: 80vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: linear-gradient(135deg, rgba(10, 10, 10, 0.95), rgba(26, 26, 26, 0.95)),
+                        radial-gradient(circle at 20% 80%, rgba(201, 169, 98, 0.1), transparent 50%),
+                        radial-gradient(circle at 80% 20%, rgba(201, 169, 98, 0.05), transparent 50%);
+        }
+
+        .membership-card {
+            liquid-glass;
+            max-width: 700px;
+            padding: 5rem;
+            text-align: center;
+            border: 1px solid rgba(201, 169, 98, 0.3);
+        }
+
+        .membership-badge {
+            display: inline-block;
+            padding: 0.5rem 1.5rem;
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            font-size: 0.75rem;
+            letter-spacing: 0.3em;
+            text-transform: uppercase;
+            margin-bottom: 2rem;
+        }
+
+        .membership-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 3.5rem;
+            font-weight: 500;
+            color: var(--white);
+            margin-bottom: 1.5rem;
+        }
+
+        .membership-subtitle {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 1.4rem;
+            color: var(--gold);
+            margin-bottom: 2rem;
+        }
+
+        .membership-benefits {
+            margin: 3rem 0;
+            list-style: none;
+        }
+
+        .membership-benefits li {
+            padding: 1rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1.05rem;
+            letter-spacing: 0.05em;
+        }
+
+        .membership-benefits li:last-child {
+            border-bottom: none;
+        }
+
+        .membership-benefits span {
+            color: var(--gold);
+            margin-right: 0.5rem;
+        }
+
+        .footer {
+            background: var(--black);
+            padding: 4rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .footer-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 3rem;
+        }
+
+        .footer-brand {
+            font-family: 'Playfair Display', serif;
+            font-size: 2rem;
+            color: var(--white);
+            margin-bottom: 1rem;
+        }
+
+        .footer-brand span {
+            color: var(--gold);
+        }
+
+        .footer-text {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+            line-height: 1.8;
+        }
+
+        .footer-heading {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.2rem;
+            color: var(--white);
+            margin-bottom: 1.5rem;
+            letter-spacing: 0.1em;
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 0.8rem;
+        }
+
+        .footer-links a {
+            color: rgba(255, 255, 255, 0.6);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            color: var(--gold);
+        }
+
+        .footer-bottom {
+            max-width: 1400px;
+            margin: 3rem auto 0;
+            padding-top: 3rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            text-align: center;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 0.85rem;
+        }
+
+        @media (max-width: 1024px) {
+            .hero-title {
+                font-size: 3.5rem;
+            }
+            .story-container {
+                grid-template-columns: 1fr;
+                gap: 3rem;
+            }
+            .footer-content {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .nav {
+                padding: 1rem 2rem;
+            }
+            .nav-links {
+                display: none;
+            }
+            .hero-title {
+                font-size: 2.5rem;
+            }
+            .section {
+                padding: 5rem 2rem;
+            }
+            .section-title {
+                font-size: 2rem;
+            }
+            .membership-card {
+                padding: 3rem 2rem;
+            }
+            .membership-title {
+                font-size: 2.5rem;
+            }
+            .footer-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease;
+        }
+
+        .scroll-reveal.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body class="gradient-overlay">
+    <nav class="nav" id="navbar">
+        <div class="logo">ÉLYSÉE</div>
+        <ul class="nav-links">
+            <li><a href="#collections">Collections</a></li>
+            <li><a href="#story">Our Story</a></li>
+            <li><a href="#values">Values</a></li>
+            <li><a href="#membership">Membership</a></li>
+        </ul>
+        <a href="#membership" class="cta-btn">Join Now</a>
+    </nav>
+
+    <section class="hero">
+        <div class="hero-bg"></div>
+        <div class="hero-content">
+            <p class="hero-subtitle">LUXURY REDEFINED</p>
+            <h1 class="hero-title">Timeless Elegance,<br>Extraordinary Craftsmanship</h1>
+            <p class="hero-description">Discover a curated collection of exceptional pieces, where each item tells a story of artisanal excellence and timeless sophistication.</p>
+            <a href="#collections" class="cta-btn cta-btn-primary">Explore Collection</a>
+        </div>
+    </section>
+
+    <section class="section" id="collections">
+        <h2 class="section-title">Exclusive Collections</h2>
+        <p class="section-subtitle">HANDPICKED TREASURES</p>
+        <div class="products-grid">
+            <div class="product-card liquid-glass scroll-reveal">
+                <div class="product-image">
+                    <div style="font-size: 4rem; color: rgba(201, 169, 98, 0.3);">✦</div>
+                </div>
+                <h3 class="product-name">Midnight Sapphire Ring</h3>
+                <p class="product-category">Fine Jewelry</p>
+                <p class="product-price">€12,500</p>
+            </div>
+            <div class="product-card liquid-glass scroll-reveal">
+                <div class="product-image">
+                    <div style="font-size: 4rem; color: rgba(201, 169, 98, 0.3);">◆</div>
+                </div>
+                <h3 class="product-name">Royal Purple Velvet Gown</h3>
+                <p class="product-category">Haute Couture</p>
+                <p class="product-price">€8,750</p>
+            </div>
+            <div class="product-card liquid-glass scroll-reveal">
+                <div class="product-image">
+                    <div style="font-size: 4rem; color: rgba(201, 169, 98, 0.3);">◇</div>
+                </div>
+                <h3 class="product-name">Artisan Leather Briefcase</h3>
+                <p class="product-category">Leather Goods</p>
+                <p class="product-price">€4,200</p>
+            </div>
+            <div class="product-card liquid-glass scroll-reveal">
+                <div class="product-image">
+                    <div style="font-size: 4rem; color: rgba(201, 169, 98, 0.3);">⬡</div>
+                </div>
+                <h3 class="product-name">Limited Edition Watch</h3>
+                <p class="product-category">Timepieces</p>
+                <p class="product-price">€18,900</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section storytelling" id="story">
+        <div class="story-container">
+            <div class="story-image scroll-reveal"></div>
+            <div class="story-content scroll-reveal">
+                <h3>Crafted for the Extraordinary</h3>
+                <p>Founded in 1842, Élysée has been the destination for those who seek the extraordinary. Our legacy spans over 180 years of unparalleled craftsmanship, where each piece is meticulously crafted by master artisans who have dedicated their lives to perfection.</p>
+                <p>From our ateliers in Paris to our showrooms in Milan, Tokyo, and New York, we continue to push the boundaries of luxury, creating timeless pieces that transcend generations and become cherished heirlooms.</p>
+                <a href="#membership" class="cta-btn">Discover Our Heritage</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="section values-section" id="values">
+        <h2 class="section-title">Our Values</h2>
+        <p class="section-subtitle">THE PILLARS OF EXCELLENCE</p>
+        <div class="values-grid">
+            <div class="value-card scroll-reveal">
+                <div class="value-icon">✧</div>
+                <h4 class="value-title">Uncompromising Quality</h4>
+                <p class="value-description">Every piece undergoes rigorous quality control, ensuring only the finest materials and craftsmanship meet our exacting standards.</p>
+            </div>
+            <div class="value-card scroll-reveal">
+                <div class="value-icon">✦</div>
+                <h4 class="value-title">Artisanal Heritage</h4>
+                <p class="value-description">Preserving centuries-old techniques while innovating for the future, our artisans combine tradition with contemporary vision.</p>
+            </div>
+            <div class="value-card scroll-reveal">
+                <div class="value-icon">◆</div>
+                <h4 class="value-title">Timeless Design</h4>
+                <p class="value-description">Creating pieces that transcend trends and seasons, designed to be cherished for generations as family heirlooms.</p>
+            </div>
+            <div class="value-card scroll-reveal">
+                <div class="value-icon">⬡</div>
+                <h4 class="value-title">Exclusive Access</h4>
+                <p class="value-description">Limited production runs and private viewings ensure our clients own truly unique, one-of-a-kind pieces.</p>
+            </div>
+        </div>
+    </section>
+
+    <section class="section membership-section" id="membership">
+        <div class="membership-card liquid-glass scroll-reveal">
+            <span class="membership-badge">By Invitation Only</span>
+            <h2 class="membership-title">Élysée Circle</h2>
+            <p class="membership-subtitle">Experience the Pinnacle of Luxury</p>
+            <ul class="membership-benefits">
+                <li><span>✦</span> First access to new collections and limited editions</li>
+                <li><span>✦</span> Personal styling appointments with our fashion directors</li>
+                <li><span>✦</span> Exclusive invitations to private events and runway shows</li>
+                <li><span>✦</span> Complimentary worldwide shipping and concierge service</li>
+                <li><span>✦</span> Access to our atelier for custom-made creations</li>
+            </ul>
+            <a href="#" class="cta-btn cta-btn-primary">Request Membership</a>
+        </div>
+    </section>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div>
+                <div class="footer-brand">ÉLYSÉE<span>.</span></div>
+                <p class="footer-text">Luxury redefined since 1842. Experience the extraordinary with our curated collections of timeless elegance.</p>
+            </div>
+            <div>
+                <h4 class="footer-heading">Collections</h4>
+                <ul class="footer-links">
+                    <li><a href="#">Fine Jewelry</a></li>
+                    <li><a href="#">Haute Couture</a></li>
+                    <li><a href="#">Leather Goods</a></li>
+                    <li><a href="#">Timepieces</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="footer-heading">Company</h4>
+                <ul class="footer-links">
+                    <li><a href="#">Our Story</a></li>
+                    <li><a href="#">Ateliers</a></li>
+                    <li><a href="#">Careers</a></li>
+                    <li><a href="#">Press</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="footer-heading">Contact</h4>
+                <ul class="footer-links">
+                    <li><a href="#">Contact Us</a></li>
+                    <li><a href="#">Book Appointment</a></li>
+                    <li><a href="#">FAQ</a></li>
+                    <li><a href="#">Shipping</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2026 Élysée. All rights reserved. Luxury Redefined.</p>
+        </div>
+    </footer>
+
+    <script>
+        window.addEventListener('scroll', function() {
+            const navbar = document.getElementById('navbar');
+            if (window.scrollY > 50) {
+                navbar.classList.add('scrolled');
+            } else {
+                navbar.classList.remove('scrolled');
+            }
+        });
+
+        const observerOptions = {
+            threshold: 0.1,
+            rootMargin: '0px 0px -50px 0px'
+        };
+
+        const observer = new IntersectionObserver(function(entries) {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('visible');
+                }
+            });
+        }, observerOptions);
+
+        document.querySelectorAll('.scroll-reveal').forEach(el => {
+            observer.observe(el);
+        });
+
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+    </script>
+</body>
+</html>
