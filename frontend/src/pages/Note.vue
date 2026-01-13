@@ -1,13 +1,15 @@
 <script setup>
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, onMounted, watch, nextTick, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import request from '../api/request'
+import * as versionHistory from '../utils/versionHistory'
 
 const router = useRouter()
 const route = useRoute()
 
 // 响应式数据
 const notes = ref([]) // 笔记列表
+const filteredNotes = ref([]) // 过滤后的笔记列表
 const selectedNote = ref(null) // 当前选中的笔记
 const noteContent = ref('') // 笔记内容
 const loading = ref(false) // 加载状态
@@ -15,6 +17,15 @@ const saving = ref(false) // 保存状态
 const showCreateModal = ref(false) // 创建笔记弹窗显示状态
 const noteTitle = ref('') // 笔记标题
 const noteTitleInput = ref(null) // 笔记标题输入框引用
+
+// 搜索和过滤
+const searchQuery = ref('') // 搜索关键词
+const showExportMenu = ref(false) // 显示导出菜单
+
+// 版本历史
+const showVersionHistory = ref(false) // 显示版本历史
+const versions = ref([]) // 版本列表
+const selectedVersion = ref(null) // 选中的版本
 
 // 对话相关数据
 const chatMessages = ref([]) // 对话消息列表
@@ -60,6 +71,7 @@ async function loadNotes() {
   try {
     const data = await request('/api/notes', 'GET')
     notes.value = data
+    applySearch() // 应用搜索
     if (notes.value.length > 0 && !selectedNote.value) {
       selectNote(notes.value[0])
     }
@@ -70,6 +82,24 @@ async function loadNotes() {
     loading.value = false
   }
 }
+
+// 应用搜索
+function applySearch() {
+  if (!searchQuery.value) {
+    filteredNotes.value = notes.value
+  } else {
+    const query = searchQuery.value.toLowerCase()
+    filteredNotes.value = notes.value.filter(note =>
+      note.title.toLowerCase().includes(query) ||
+      (note.content && note.content.toLowerCase().includes(query))
+    )
+  }
+}
+
+// 监听搜索关键词变化
+watch(searchQuery, () => {
+  applySearch()
+})
 
 // 选择笔记
 async function selectNote(note) {
@@ -118,24 +148,214 @@ async function loadWorkResults(noteId) {
   }
 }
 
+// 导出笔记为文本文件
+async function exportNoteToText() {
+  if (!selectedNote.value) return
+
+  try {
+    let content = `笔记标题: ${selectedNote.value.title}\n`
+    content += `导出时间: ${new Date().toLocaleString('zh-CN')}\n`
+    content += `更新时间: ${selectedNote.value.updated_at || '未知'}\n`
+    content += '\n' + '='.repeat(50) + '\n\n'
+    content += noteContent.value
+
+    // 创建 Blob 并下载
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${selectedNote.value.title}.txt`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    // 显示成功提示
+    if (this.$toast) {
+      this.$toast.success('笔记导出成功！', 3000, '导出完成')
+    }
+  } catch (error) {
+    console.error('导出失败:', error)
+    if (this.$toast) {
+      this.$toast.error('导出失败，请稍后重试', 3000, '导出错误')
+    }
+  }
+}
+
+// 导出笔记为 Markdown 文件
+async function exportNoteToMarkdown() {
+  if (!selectedNote.value) return
+
+  try {
+    let content = `# ${selectedNote.value.title}\n\n`
+    content += `*更新时间: ${selectedNote.value.updated_at || '未知'}*\n\n`
+    content += '---\n\n'
+    content += noteContent.value
+
+    // 创建 Blob 并下载
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${selectedNote.value.title}.md`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    if (this.$toast) {
+      this.$toast.success('Markdown 文件导出成功！', 3000, '导出完成')
+    }
+  } catch (error) {
+    console.error('导出失败:', error)
+    if (this.$toast) {
+      this.$toast.error('导出失败，请稍后重试', 3000, '导出错误')
+    }
+  }
+}
+
+// 导出笔记为 Word 文档（使用 HTML + content-type）
+async function exportNoteToWord() {
+  if (!selectedNote.value) return
+
+  try {
+    // 简单的 HTML 格式，可以被 Word 打开
+    let content = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>${selectedNote.value.title}</title>
+<style>
+body { font-family: 'Microsoft YaHei', Arial, sans-serif; }
+h1 { color: #2E86C1; }
+</style>
+</head>
+<body>
+<h1>${selectedNote.value.title}</h1>
+<p><strong>更新时间:</strong> ${selectedNote.value.updated_at || '未知'}</p>
+<hr/>
+${noteContent.value.replace(/\n/g, '<br/>')}
+</body>
+</html>`
+
+    // 创建 Blob 并下载
+    const blob = new Blob([content], {
+      type: 'application/msword',
+      charset: 'utf-8'
+    })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${selectedNote.value.title}.doc`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    if (this.$toast) {
+      this.$toast.success('Word 文档导出成功！', 3000, '导出完成')
+    }
+  } catch (error) {
+    console.error('导出失败:', error)
+    if (this.$toast) {
+      this.$toast.error('导出失败，请稍后重试', 3000, '导出错误')
+    }
+  }
+}
+
 // 保存笔记内容
 async function saveNote() {
   if (!selectedNote.value || saving.value) return
-  
+
+  // 保存前创建版本
+  saveVersionHistory()
+
   saving.value = true
   try {
     await request(`/api/notes/${selectedNote.value.id}`, 'PUT', {
       content: noteContent.value
     })
-    
-    // 可以在这里显示保存成功的提示
-    console.log('笔记保存成功')
+
+    if (this.$toast) {
+      this.$toast.success('笔记保存成功！', 3000, '保存完成')
+    }
   } catch (err) {
     console.error('Error saving note:', err)
-    alert('保存笔记失败，请稍后重试')
+    if (this.$toast) {
+      this.$toast.error('保存笔记失败，请稍后重试', 3000, '保存错误')
+    }
   } finally {
     saving.value = false
   }
+}
+
+// 保存版本历史
+function saveVersionHistory() {
+  if (selectedNote.value) {
+    versionHistory.saveVersion(
+      'note',
+      selectedNote.value.id,
+      noteContent.value,
+      '手动保存'
+    )
+  }
+}
+
+// 加载版本历史
+function loadVersionHistory() {
+  if (selectedNote.value) {
+    versions.value = versionHistory.getVersions('note', selectedNote.value.id)
+  }
+}
+
+// 查看版本历史
+function showVersions() {
+  loadVersionHistory()
+  showVersionHistory.value = true
+}
+
+// 恢复版本
+function restoreToVersion(versionId) {
+  if (!selectedNote.value) return
+
+  const version = versionHistory.restoreVersion('note', selectedNote.value.id, versionId)
+  if (version) {
+    noteContent.value = version.content
+    loadVersionHistory()
+    showVersionHistory.value = false
+
+    if (this.$toast) {
+      this.$toast.success('版本已恢复！', 3000, '恢复完成')
+    }
+  }
+}
+
+// 删除版本
+function deleteVersion(versionId) {
+  if (!selectedNote.value) return
+
+  if (confirm('确定要删除这个版本吗？')) {
+    versionHistory.deleteVersion('note', selectedNote.value.id, versionId)
+    loadVersionHistory()
+
+    if (this.$toast) {
+      this.$toast.info('版本已删除', 3000, '删除完成')
+    }
+  }
+}
+
+// 格式化日期时间
+function formatDateTime(isoString) {
+  if (!isoString) return ''
+  const date = new Date(isoString)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
 }
 
 // 创建新笔记
@@ -178,20 +398,30 @@ async function createNote() {
 // 删除笔记
 async function deleteNote() {
   if (!selectedNote.value) return
-  
-  if (!confirm(`确定要删除笔记"${selectedNote.value.title}"吗？此操作不可恢复。`)) {
+
+  const noteToDelete = selectedNote.value
+  const hasChatHistory = chatMessages.value.length > 0
+
+  let confirmMessage = `确定要删除笔记"${noteToDelete.title}"吗？\n\n`
+  if (hasChatHistory) {
+    confirmMessage += `此操作将同时删除：\n- 笔记内容\n- ${chatMessages.value.length} 条对话记录\n- 工作结果\n\n此操作无法恢复，确定继续？`
+  } else {
+    confirmMessage += `此操作无法恢复，确定继续？`
+  }
+
+  if (!confirm(confirmMessage)) {
     return
   }
-  
+
   try {
-    await request(`/api/notes/${selectedNote.value.id}`, 'DELETE')
-    
+    await request(`/api/notes/${noteToDelete.id}`, 'DELETE')
+
     // 从列表中移除已删除的笔记
-    const index = notes.value.findIndex(n => n.id === selectedNote.value.id)
+    const index = notes.value.findIndex(n => n.id === noteToDelete.id)
     if (index > -1) {
       notes.value.splice(index, 1)
     }
-    
+
     // 选择其他笔记或清空内容
     if (notes.value.length > 0) {
       const nextIndex = Math.min(index, notes.value.length - 1)
@@ -202,7 +432,7 @@ async function deleteNote() {
       chatMessages.value = []
       workResults.value = []
     }
-    
+
     alert('笔记删除成功')
   } catch (err) {
     console.error('Error deleting note:', err)
@@ -260,7 +490,7 @@ function selectWorkResult(result) {
     <!-- 左侧笔记列表 -->
     <div class="w-64 bg-white border-r border-gray-200 flex flex-col">
       <div class="p-4 border-b border-gray-200">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between mb-3">
           <h2 class="text-lg font-medium text-gray-900">我的笔记</h2>
           <button
             @click="showCreateModal = true"
@@ -269,20 +499,27 @@ function selectWorkResult(result) {
             新增
           </button>
         </div>
+        <!-- 搜索框 -->
+        <input
+          v-model="searchQuery"
+          type="text"
+          placeholder="搜索笔记..."
+          class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
       </div>
-      
+
       <div class="flex-1 overflow-y-auto">
         <div v-if="loading && notes.length === 0" class="p-4 text-center text-gray-500">
           加载中...
         </div>
-        
-        <div v-else-if="notes.length === 0" class="p-4 text-center text-gray-500">
-          暂无笔记
+
+        <div v-else-if="filteredNotes.length === 0" class="p-4 text-center text-gray-500">
+          {{ searchQuery ? '未找到匹配的笔记' : '暂无笔记' }}
         </div>
-        
+
         <div v-else>
           <div
-            v-for="note in notes"
+            v-for="note in filteredNotes"
             :key="note.id"
             @click="selectNote(note)"
             :class="[
@@ -321,6 +558,54 @@ function selectWorkResult(result) {
           <div class="flex items-center justify-between">
             <h1 class="text-xl font-medium text-gray-900">{{ selectedNote.title }}</h1>
             <div class="flex space-x-2">
+              <!-- 版本历史按钮 -->
+              <button
+                @click="showVersions"
+                class="bg-gray-100 text-gray-700 rounded-md px-3 py-1 text-sm hover:bg-gray-200"
+              >
+                版本历史 ({{ versions.length }})
+              </button>
+
+              <!-- 导出按钮 -->
+              <div class="relative">
+                <button
+                  class="bg-gray-100 text-gray-700 rounded-md px-3 py-1 text-sm hover:bg-gray-200"
+                  @click="showExportMenu = !showExportMenu"
+                >
+                  导出
+                  <svg class="inline-block w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <!-- 导出菜单 -->
+                <div
+                  v-if="showExportMenu"
+                  class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg border border-gray-200 z-10"
+                >
+                  <a
+                    href="#"
+                    @click.prevent="exportNoteToText"
+                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    导出为文本
+                  </a>
+                  <a
+                    href="#"
+                    @click.prevent="exportNoteToMarkdown"
+                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    导出为 Markdown
+                  </a>
+                  <a
+                    href="#"
+                    @click.prevent="exportNoteToWord"
+                    class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    导出为 Word
+                  </a>
+                </div>
+              </div>
+
               <button
                 @click="saveNote"
                 :disabled="saving"

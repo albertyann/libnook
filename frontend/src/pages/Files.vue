@@ -6,6 +6,7 @@ import request from '../api/request'
 
 const router = useRouter()
 const files = ref([])
+const filteredFiles = ref([]) // 过滤后的文件列表
 const fileInput = ref(null)
 const uploading = ref(false)
 const loading = ref(false)
@@ -17,6 +18,10 @@ const showNoteModal = ref(false) // 笔记弹窗显示状态
 const noteTitle = ref('') // 笔记标题
 const noteSubmitting = ref(false) // 笔记提交状态
 const noteTitleInput = ref(null) // 笔记标题输入框引用
+
+// 搜索和过滤
+const searchQuery = ref('') // 搜索关键词
+const statusFilter = ref('all') // 状态过滤器: all, pending, processing, images_generated, completed, error
 
 // 监听弹窗显示状态，自动聚焦输入框
 watch(showNoteModal, (newVal) => {
@@ -36,14 +41,36 @@ async function load() {
     const data = await request('/api/file/list', 'GET')
     files.value = data.files || []
     total.value = data.total || 0
+    applyFilters() // 应用搜索和过滤
   } catch (err) {
     console.error('Error loading files:', err)
     error.value = '加载文件失败，请稍后重试'
     files.value = []
+    filteredFiles.value = []
   } finally {
     loading.value = false
   }
 }
+
+// 应用搜索和过滤
+function applyFilters() {
+  filteredFiles.value = files.value.filter(file => {
+    // 应用搜索关键词
+    const matchesSearch = searchQuery.value === '' ||
+      file.original_filename.toLowerCase().includes(searchQuery.value.toLowerCase())
+
+    // 应用状态过滤
+    const matchesStatus = statusFilter.value === 'all' ||
+      file.status === statusFilter.value
+
+    return matchesSearch && matchesStatus
+  })
+}
+
+// 监听搜索和过滤条件变化
+watch([searchQuery, statusFilter], () => {
+  applyFilters()
+})
 
 function goWorkspace(id) {
   // 确保跳转到工作区页面，使用query参数传递文件ID
@@ -53,13 +80,21 @@ function goWorkspace(id) {
 function previewFile(id) {
   const file = files.value.find(f => f.id === id)
   if (file) {
-    // 使用文件ID构建预览URL
-    const previewUrl = `http://127.0.0.1:8000/api/file/${id}`
+    // 使用环境变量构建预览URL
+    const baseURL = import.meta.env.VITE_APP_BASE_API || 'http://127.0.0.1:8000'
+    const previewUrl = `${baseURL}/api/file/${id}`
     window.open(previewUrl, '_blank', 'width=900,height=800,toolbar=no,menubar=no,scrollbars=yes,resizable=yes')
   }
 }
 
 async function del(id) {
+  const file = files.value.find(f => f.id === id)
+  if (!file) return
+
+  const confirmed = confirm(`确定要删除文件"${file.original_filename}"吗？\n\n此操作将删除文件及其所有OCR结果，且无法恢复。`)
+
+  if (!confirmed) return
+
   try {
     await request(`/api/file/${id}`, 'DELETE')
     load() // 删除成功后重新加载列表
@@ -277,7 +312,7 @@ onMounted(load)
       <div class="flex items-center justify-between mb-4">
           <h1 class="text-2xl font-semibold">文件管理</h1>
           <div v-if="total > 0" class="text-sm text-gray-500">
-            共 {{ total }} 个文件
+            共 {{ total }} 个文件 ({{ filteredFiles.length }} 个显示)
           </div>
         <div class="space-x-2">
           <button class="rounded-md bg-green-500 text-white px-3 py-1" @click="triggerFileUpload" :disabled="uploading">
@@ -288,6 +323,35 @@ onMounted(load)
           <button class="rounded-md bg-purple-500 text-white px-3 py-1" @click="router.push({name:'notes'})">笔记管理</button>
           <button class="rounded-md bg-gray-100 px-3 py-1" @click="router.push({name:'settings'})">OCR 配置</button>
           <button class="rounded-md bg-gray-100 px-3 py-1" @click="router.push({name:'home'})">返回首页</button>
+        </div>
+      </div>
+
+      <!-- 搜索和过滤栏 -->
+      <div class="mb-4 bg-white rounded-lg p-4 border">
+        <div class="flex gap-4">
+          <!-- 搜索框 -->
+          <div class="flex-1">
+            <input
+              v-model="searchQuery"
+              type="text"
+              placeholder="搜索文件名..."
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
+          <!-- 状态过滤器 -->
+          <div class="w-48">
+            <select
+              v-model="statusFilter"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="all">全部状态</option>
+              <option value="pending">等待处理</option>
+              <option value="processing">处理中</option>
+              <option value="images_generated">图片已生成</option>
+              <option value="completed">已完成</option>
+              <option value="error">处理失败</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -322,7 +386,7 @@ onMounted(load)
             <tr v-else-if="error" class="text-center">
               <td colspan="6" class="p-6 text-red-500">{{ error }}</td>
             </tr>
-            <tr v-for="f in files" :key="f.id" class="border-t hover:bg-gray-50 transition-colors">
+            <tr v-for="f in filteredFiles" :key="f.id" class="border-t hover:bg-gray-50 transition-colors">
               <td class="p-3">
                 <div class="font-medium">{{ f.original_filename }}</div>
                 <div class="text-xs text-gray-500">
@@ -361,7 +425,7 @@ onMounted(load)
                 </div>
               </td>
             </tr>
-            <tr v-if="!files.length">
+            <tr v-if="!filteredFiles.length">
               <td colspan="6" class="p-6 text-center text-gray-500">暂无文件，请先上传 PDF</td>
             </tr>
           </tbody>

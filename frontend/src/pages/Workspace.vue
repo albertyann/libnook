@@ -19,6 +19,96 @@ const selectedPageInfo = ref({ocr_text: ""})
 const loading = ref(false)
 const error = ref(null)
 const ocrAgain = ref(false) // 是否重新OCR
+const ocrLoading = ref(false) // OCR加载状态
+const ocrProgress = ref(0) // OCR进度 (0-100)
+const batchOcrProgress = ref({ current: 0, total: 0 }) // 批量OCR进度
+const showShortcutsModal = ref(false) // 显示快捷键帮助弹窗
+
+// 导出功能
+async function exportToFile() {
+  if (!fileId.value || !pdfData.value) return
+
+  try {
+    // 生成文本内容（所有页面的OCR结果）
+    let content = `文件名: ${pdfData.value.original_filename}\n`
+    content += `导出时间: ${new Date().toLocaleString('zh-CN')}\n`
+    content += `总页数: ${pages.value.length}\n`
+    content += '\n' + '='.repeat(50) + '\n\n'
+
+    pages.value.forEach((page, index) => {
+      content += `--- 第 ${index + 1} 页 ---\n`
+      if (page.ocr_text && page.ocr_text.trim()) {
+        content += page.ocr_text + '\n'
+      } else {
+        content += '[无OCR内容]\n'
+      }
+      content += '\n'
+    })
+
+    // 创建 Blob 并下载
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${pdfData.value.original_filename}_ocr.txt`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    // 显示成功提示
+    if (this.$toast) {
+      this.$toast.success('文件导出成功！', 3000, '导出完成')
+    }
+  } catch (error) {
+    console.error('导出失败:', error)
+    if (this.$toast) {
+      this.$toast.error('导出失败，请稍后重试', 3000, '导出错误')
+    }
+  }
+}
+
+async function exportToMarkdown() {
+  if (!fileId.value || !pdfData.value) return
+
+  try {
+    // 生成 Markdown 内容
+    let content = `# ${pdfData.value.original_filename}\n\n`
+    content += `导出时间: ${new Date().toLocaleString('zh-CN')}\n`
+    content += `总页数: ${pages.value.length}\n\n`
+
+    content += '---\n\n'
+
+    pages.value.forEach((page, index) => {
+      content += `## 第 ${index + 1} 页\n\n`
+      if (page.ocr_text && page.ocr_text.trim()) {
+        content += page.ocr_text + '\n\n'
+      } else {
+        content += '*无OCR内容*\n\n'
+      }
+    })
+
+    // 创建 Blob 并下载
+    const blob = new Blob([content], { type: 'text/markdown;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${pdfData.value.original_filename}_ocr.md`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+
+    if (this.$toast) {
+      this.$toast.success('Markdown 文件导出成功！', 3000, '导出完成')
+    }
+  } catch (error) {
+    console.error('导出失败:', error)
+    if (this.$toast) {
+      this.$toast.error('导出失败，请稍后重试', 3000, '导出错误')
+    }
+  }
+}
 
 // 预览组件引用
 const previewSectionRef = ref(null)
@@ -44,7 +134,8 @@ const editorOptions = {
       [{ 'list': 'ordered'}, { 'list': 'bullet' }],
       [{ 'indent': '-1'}, { 'indent': '+1' }],
       [{ 'align': [] }],
-      ['clean']
+      ['clean'],
+      ['undo', 'redo'] // 添加撤销/重做按钮
     ]
   }
 }
@@ -55,7 +146,7 @@ function handleKeyDown(event) {
   if (event.ctrlKey && event.key === 's') {
     // 阻止浏览器默认保存行为
     event.preventDefault()
-    
+
     // 检查焦点是否在编辑器内
     const editorElement = editorRef.value?.$el
     if (editorElement && editorElement.contains(document.activeElement)) {
@@ -63,12 +154,25 @@ function handleKeyDown(event) {
       saveContentToFile()
     }
   }
-  
+
+  // 检查是否按下了Ctrl+? 显示快捷键帮助
+  if (event.ctrlKey && (event.key === '?' || event.key === 'Shift')) {
+    event.preventDefault()
+    showShortcutsModal.value = true
+  }
+
+  // 检查是否按下了Esc 关闭弹窗
+  if (event.key === 'Escape') {
+    if (showShortcutsModal.value) {
+      showShortcutsModal.value = false
+    }
+  }
+
   // 检查是否按下了上下箭头键，且左侧页面列表有焦点
   if (pagesListHasFocus.value && (event.key === 'ArrowUp' || event.key === 'ArrowDown')) {
     // 阻止默认滚动行为
     event.preventDefault()
-    
+
     // 计算新的页面号
     let newPage = selectedPage.value
     if (event.key === 'ArrowUp') {
@@ -78,7 +182,7 @@ function handleKeyDown(event) {
       // 向下箭头：下一页
       newPage = Math.min(pages.value.length, selectedPage.value + 1)
     }
-    
+
     // 如果页面号有变化，则选择新页面
     if (newPage !== selectedPage.value) {
       select(newPage)
@@ -104,12 +208,15 @@ async function loadPdfData() {
     const data = response
     pdfData.value = data
 
+    // 使用环境变量构建API基础URL
+    const baseURL = import.meta.env.VITE_APP_BASE_API || 'http://127.0.0.1:8000'
+
     // 根据API返回的数据构建页面列表
     if (data.pages && Array.isArray(data.pages)) {
       pages.value = data.pages.map(page => ({
         index: page.page_number,
-        image_url: `http://127.0.0.1:8000/api/file/${fileId.value}/image/${page.page_number}`,
-        thumb_url: page.thumb_url || page.image_url,
+        image_url: `${baseURL}/api/file/${fileId.value}/image/${page.page_number}`,
+        thumb_url: page.thumb_url || `${baseURL}/api/file/${fileId.value}/image/${page.page_number}`,
         ocr_text: page.ocr_text,
         width: page.width,
         height: page.height
@@ -119,8 +226,8 @@ async function loadPdfData() {
       const totalPages = data.total_pages || 0
       pages.value = Array.from({ length: totalPages }, (_, i) => ({
         index: i + 1,
-        image_url: `http://127.0.0.1:8000/api/file/${fileId.value}/image/${i + 1}`,
-        thumb_url: `http://127.0.0.1:8000/api/file/${fileId.value}/image/${i + 1}`,
+        image_url: `${baseURL}/api/file/${fileId.value}/image/${i + 1}`,
+        thumb_url: `${baseURL}/api/file/${fileId.value}/image/${i + 1}`,
         ocr_text: "",
         width: null,
         height: null
@@ -182,10 +289,13 @@ async function againOcr() {
 // 尝试从API获取该页面的OCR结果
 async function fetchPageOcr(page) {
   try {
+    ocrLoading.value = true
+    ocrProgress.value = 0
     const response = await Api.ocr(fileId.value, page, {
       again: ocrAgain.value
     })
     console.log(response)
+    ocrProgress.value = 100
     if (response.status == 'success') {
       return response.recognized_text || ''
     }
@@ -193,6 +303,9 @@ async function fetchPageOcr(page) {
   } catch (err) {
     ocrAgain.value = false
     console.error('Error fetching OCR result:', err)
+  } finally {
+    ocrLoading.value = false
+    ocrProgress.value = 0
   }
   return ''
 }
@@ -211,14 +324,22 @@ function generatePageContent() {
 async function batchOcr() {
   try {
     const page = selectedPage.value
-    for (let i = page; i <= page + 10; i++) {
+    const totalToProcess = Math.min(10, pages.value.length - page + 1)
+
+    batchOcrProgress.value = { current: 0, total: totalToProcess }
+
+    for (let i = page; i < page + totalToProcess; i++) {
       let ocrText = await fetchPageOcr(i)
       if (ocrText) {
         pages.value[i].ocr_text = ocrText
       }
+      batchOcrProgress.value.current = i - page + 1
     }
+
+    batchOcrProgress.value = { current: 0, total: 0 }
   } catch (err) {
     console.error('result:', err)
+    batchOcrProgress.value = { current: 0, total: 0 }
   }
 }
 
@@ -396,7 +517,26 @@ function replacePunctuation() {
             </button>
           </div>
           <div class="border-b border-gray-200">
-            <h2 class="text-xl font-bold text-gray-800">{{ pdfData?.original_filename || '文档导航' }}</h2>
+            <div class="flex items-center justify-between">
+              <h2 class="text-xl font-bold text-gray-800">{{ pdfData?.original_filename || '文档导航' }}</h2>
+              <!-- 导出按钮 -->
+              <div class="flex space-x-2">
+                <button
+                  class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+                  @click="exportToFile"
+                  title="导出为文本文件"
+                >
+                  导出 TXT
+                </button>
+                <button
+                  class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-md text-sm font-medium transition-colors"
+                  @click="exportToMarkdown"
+                  title="导出为 Markdown 文件"
+                >
+                  导出 MD
+                </button>
+              </div>
+            </div>
           </div>
           <!-- 搜索与跳转 -->
           <div class="border-b border-gray-200">
@@ -455,26 +595,52 @@ function replacePunctuation() {
             <!-- 预览工具栏 -->
             <div class="p-3 bg-gray-50 border-b border-gray-200 flex items-center">
               <div class="flex space-x-1">
-                <button class="tool-btn" @click="handleZoomIn">
+                <button class="tool-btn" @click="handleZoomIn" :disabled="ocrLoading">
                   <span class="iconify mr-1" data-icon="mdi:magnify-plus-outline" data-width="18">放大</span>
                 </button>
-                <button class="tool-btn" @click="handleZoomOut">
+                <button class="tool-btn" @click="handleZoomOut" :disabled="ocrLoading">
                   <span class="iconify mr-1" data-icon="mdi:magnify-minus-outline" data-width="18">缩小</span>
                 </button>
-                <button class="tool-btn" @click="generatePageContent">
+                <button class="tool-btn" @click="generatePageContent" :disabled="ocrLoading" :class="{ 'opacity-50 cursor-not-allowed': ocrLoading }">
                   <span class="iconify mr-1" data-icon="mdi:fullscreen" data-width="18">OCR</span>
                 </button>
-                <button class="tool-btn" @click="batchOcr">
+                <button class="tool-btn" @click="batchOcr" :disabled="ocrLoading || batchOcrProgress.total > 0" :class="{ 'opacity-50 cursor-not-allowed': ocrLoading || batchOcrProgress.total > 0 }">
                   <span class="iconify mr-1" data-icon="mdi:fullscreen" data-width="18">批量OCR</span>
                 </button>
-                <button class="tool-btn" @click="againOcr">
+                <button class="tool-btn" @click="againOcr" :disabled="ocrLoading" :class="{ 'opacity-50 cursor-not-allowed': ocrLoading }">
                   <span class="iconify mr-1" data-icon="mdi:fullscreen" data-width="18">重新OCR</span>
                 </button>
-                <button class="tool-btn" @click="noOcr">
+                <button class="tool-btn" @click="noOcr" :disabled="ocrLoading" :class="{ 'opacity-50 cursor-not-allowed': ocrLoading }">
                   <span class="iconify mr-1" data-icon="mdi:fullscreen" data-width="18">无需OCR</span>
                 </button>
               </div>
               <div class="ml-auto text-sm text-gray-700">第 {{ selectedPage }} 页 ({{ pages.length }})</div>
+              <!-- 快捷键帮助按钮 -->
+              <button
+                class="ml-2 text-gray-500 hover:text-gray-700"
+                @click="showShortcutsModal = true"
+                title="键盘快捷键"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+              <!-- OCR进度指示器 -->
+              <div v-if="ocrLoading" class="ml-4 flex items-center">
+                <svg class="animate-spin h-5 w-5 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="ml-2 text-sm text-blue-600">OCR中... {{ ocrProgress }}%</span>
+              </div>
+              <!-- 批量OCR进度指示器 -->
+              <div v-if="batchOcrProgress.total > 0" class="ml-4 flex items-center">
+                <svg class="animate-spin h-5 w-5 text-green-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                <span class="ml-2 text-sm text-green-600">批量OCR: {{ batchOcrProgress.current }}/{{ batchOcrProgress.total }}</span>
+              </div>
             </div>
             <!-- 预览内容 -->
             <PreviewSection
@@ -523,6 +689,98 @@ function replacePunctuation() {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 键盘快捷键帮助弹窗 -->
+    <div v-if="showShortcutsModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div class="bg-white rounded-lg p-6 w-96 max-h-[80vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-xl font-semibold">键盘快捷键</h2>
+          <button
+            @click="showShortcutsModal = false"
+            class="text-gray-500 hover:text-gray-700"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <div class="space-y-4">
+          <div>
+            <h3 class="text-sm font-semibold text-gray-900 mb-2">编辑操作</h3>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span class="text-gray-600">保存内容</span>
+                <kbd class="bg-gray-100 px-2 py-1 rounded">Ctrl + S</kbd>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">撤销</span>
+                <kbd class="bg-gray-100 px-2 py-1 rounded">Ctrl + Z</kbd>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">重做</span>
+                <kbd class="bg-gray-100 px-2 py-1 rounded">Ctrl + Y</kbd>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 class="text-sm font-semibold text-gray-900 mb-2">页面导航</h3>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span class="text-gray-600">上一页</span>
+                <kbd class="bg-gray-100 px-2 py-1 rounded">↑</kbd>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">下一页</span>
+                <kbd class="bg-gray-100 px-2 py-1 rounded">↓</kbd>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 class="text-sm font-semibold text-gray-900 mb-2">图片预览</h3>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span class="text-gray-600">放大</span>
+                <kbd class="bg-gray-100 px-2 py-1 rounded">Ctrl + 滚轮上</kbd>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">缩小</span>
+                <kbd class="bg-gray-100 px-2 py-1 rounded">Ctrl + 滚轮下</kbd>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">滚动</span>
+                <kbd class="bg-gray-100 px-2 py-1 rounded">滚轮</kbd>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h3 class="text-sm font-semibold text-gray-900 mb-2">界面操作</h3>
+            <div class="space-y-2 text-sm">
+              <div class="flex justify-between">
+                <span class="text-gray-600">显示快捷键</span>
+                <kbd class="bg-gray-100 px-2 py-1 rounded">Ctrl + ?</kbd>
+              </div>
+              <div class="flex justify-between">
+                <span class="text-gray-600">关闭弹窗</span>
+                <kbd class="bg-gray-100 px-2 py-1 rounded">Esc</kbd>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 text-center">
+          <button
+            @click="showShortcutsModal = false"
+            class="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+          >
+            知道了
+          </button>
         </div>
       </div>
     </div>
