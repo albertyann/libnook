@@ -22,7 +22,7 @@ class LMStudioTranslator:
     
     def __init__(self, base_url: str = "http://127.0.0.1:8899"):
         self.base_url = base_url
-        self.model = "qwen/qwen3-vl-8b"
+        self.model = "hy-mt"
         self.chat_endpoint = f"{base_url}/v1/chat/completions"
     
     def translate(self, text: str, target_lang: str, source_lang: str = "auto") -> Dict[str, str]:
